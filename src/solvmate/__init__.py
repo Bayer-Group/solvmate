@@ -111,7 +111,7 @@ def download_file(
     """
     import urllib.request
 
-    if os.system(f"curl {url} > {dest}") and os.system(f"wget {url} -O {dest}"):
+    if os.system(f"wget {url} -O {dest}") and os.system(f"curl {url} > {dest}"):
         try:
             urllib.request.urlretrieve(f"{url}", f"{dest}")
         except:
