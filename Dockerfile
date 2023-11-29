@@ -48,7 +48,10 @@ RUN pip install scikit-learn
 RUN pip install rdkit-pypi
 RUN pip list
 
-RUN python /solvmate/scripts/download_models.py
+#RUN python /solvmate/scripts/download_models.py
+RUN wget "https://github.com/Bayer-Group/solvent-mate/releases/download/v0.1/public_data_models.zip" -O /solvmate/data/archive.zip
+RUN unzip /solvmate/data/archive.zip
+RUN rm /solvmate/data/archive.zip
 
 ENV PYTHONPATH="/solvmate/src:${PYTHONPATH}"
 ENTRYPOINT [ "python", "/solvmate/src/solvmate/app/app.py" ]
