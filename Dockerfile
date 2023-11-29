@@ -51,6 +51,7 @@ RUN pip list
 #RUN python /solvmate/scripts/download_models.py
 RUN wget "https://github.com/Bayer-Group/solvent-mate/releases/download/v0.1/public_data_models.zip" -O /solvmate/data/archive.zip
 RUN unzip /solvmate/data/archive.zip
+RUN mv recommender_*.pkl /solvmate/data
 RUN rm /solvmate/data/archive.zip
 
 ENV PYTHONPATH="/solvmate/src:${PYTHONPATH}"
