@@ -1,0 +1,7 @@
+*.out
+*.so
+*.pyc
+.vscode/
+gcyc.egg-info/
+build/
+dist/

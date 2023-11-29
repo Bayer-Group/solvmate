@@ -1,0 +1,12 @@
+.DS_Store
+*.pyc
+*.csv
+*.pkl
+*.xlsx
+.opsin_cache.json
+*.
+*.pem
+data/
+archive/
+figures/
+.auth.json

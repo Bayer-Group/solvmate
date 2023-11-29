@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Solvmate</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/assets/w3.css">
+  <link rel="stylesheet" href="/static/assets/w3_black.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.min.css">
+  <link rel="icon" href="/static/assets/favicon.svg" type="image/svg+xml">
+  <!--
+  <link rel="stylesheet" href="/static/assets/w3_font_awesome.css">
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+  <link rel="stylesheet" href="https://www.w3schools.com/lib/w3-theme-black.css">
+  -->
+  <script type="text/javascript" src="/static/assets/molpaint/molpaint.js"></script>
+</head>
+
+<body>
+
+
+  <!-- Side Navigation -->
+  <nav class="w3-sidebar w3-bar-block w3-card w3-animate-left w3-center" style="display:none" id="mySidebar">
+    <h1 class="w3-xxxlarge w3-text-theme">Side Navigation</h1>
+    <button class="w3-bar-item w3-button" onclick="w3_close()">Close <i class="fa fa-remove"></i></button>
+    <a href="#" class="w3-bar-item w3-button">Link 1</a>
+    <a href="#" class="w3-bar-item w3-button">Link 2</a>
+    <a href="#" class="w3-bar-item w3-button">Link 3</a>
+    <a href="#" class="w3-bar-item w3-button">Link 4</a>
+  </nav>
+
+  <!-- Header -->
+  <header class="w3-container w3-theme w3-padding" id="myHeader">
+    <i onclick="w3_open()" class="fa fa-bars w3-xlarge w3-button w3-theme"></i>
+    <div class="w3-center">
+      <h4>Find your solvent match with</h4>
+      <h1 class="w3-xxxlarge w3-animate-bottom">Solvmate</h1>
+      <div class="w3-padding-32">
+      </div>
+    </div>
+  </header>
+
+  <!-- 3 parts of the app -->
+  <div class="w3-row-padding w3-center w3-margin-top w3-margin-bottom">
+    <div class="w3-third">
+      <div class="w3-card w3-container" style="min-height:460px">
+        <h3>Input molecule</h3><br>
+        <i class="fa fa-desktop w3-margin-bottom w3-text-theme" style="font-size:120px"></i>
+        <p>Start your search here</p>
+      </div>
+    </div>
+
+
+    <div class="w3-third">
+      <div class="w3-card w3-container" style="min-height:460px">
+        <h3>Solubility</h3><br>
+        <i class="fa fa-flask w3-margin-bottom w3-text-theme" style="font-size:120px"></i>
+        <p>Solvmate allows you to rank</p>
+        <p>organic solvents by predicted</p>
+        <p>solubility</p>
+      </div>
+    </div>
+
+    <div class="w3-third">
+      <div class="w3-card w3-container" style="min-height:460px">
+        <h3>Crystallization conditions</h3><br>
+        <i class="fa fa-diamond w3-margin-bottom w3-text-theme" style="font-size:120px"></i>
+        <p>Solvmate finds similar</p>
+        <p>compounds in our database</p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Section 1, Input molecules -->
+
+  <hr>
+  <button onclick="myAccFunc('input')" class="w3-block w3-padding-16 w3-container w3-black"><i class="fa fa-desktop"
+      style="font-size: 0.73em;"></i>
+    <h2>Input Molecule</h2>
+  </button>
+  <div id="input" class="w3-hide">
+    <div class="w3-padding w3-white w3-display-container w3-third" style="min-height:350px; overflow:hidden">
+      <div>
+        <div id="molEditor" style="background-color: white !important;"></div>
+      </div>
+      <h4>SMILES:</h4>
+      <div class="w3-section">
+        <input class="w3-input" type="text" id="smiInput" required>
+      </div>
+    </div>
+    <!-- The following mol-image is no longer needed as we already have a mol editor showing a mol -->
+    <!-- In case the mol editor ever gets removed, comment this in again ...-->
+    <!--
+
+    <div class="w3-padding w3-white w3-display-container w3-third mol-image" style="min-height:350px; overflow:hidden">
+      <img class="mol-image">
+    </div>
+    -->
+  </div>
+
+
+  <!-- Section 2, Solubility -->
+  <!-- Inputs -->
+  <button onclick="myAccFunc('sol')" class="w3-block w3-padding-16 w3-container w3-black"><i class="fa fa-flask"
+      style="font-size: 0.73em;"></i>
+    <h2>Solubility</h2>
+  </button>
+  <div id="sol" class="w3-hide">
+    <div class="w3-padding w3-third w3-white" style="min-height:400px">
+      <h2>Query molecule</h2>
+      <img class="mol-image">
+    </div>
+    <div class="w3-padding w3-third w3-white" style="min-height:400px">
+      <h2>Select solvent set to rank</h2>
+      <div id="solventSelectionDiv">
+      </div>
+    </div>
+
+    <div class="w3-padding w3-third w3-white" style="min-height:400px">
+      <h2>Run Solubility Ranking</h2>
+      <button class="w3-button w3-theme" id="runSol">Run</button>
+    </div>
+
+    <!-- Results -->
+    <button onclick="myAccFunc('resso')" class="w3-block w3-padding-16 w3-container w3-black">
+      <h3 id="resultsHeaderSolub">Results</h3>
+    </button>
+    <div id="resso" class="w3-hide">
+      <div class="w3-padding w3-white" style="min-height:350px; overflow:hidden">
+        <div id="solubImage"></div>
+        <button class="w3-button w3-theme">Download as table</button>
+        <br>
+      </div>
+
+      <div class="w3-row-padding w3-center w3-margin-top w3-margin-bottom">
+        <div class="w3-card w3-container" style="min-height:400px">
+          <h3>Similar compounds in the database</h3><br>
+          <div id="sim_solub"></div>
+          <p>Place here the results from the similarity search</p>
+          <p id="pager_solub"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 3, Crystallization -->
+  <!-- Inputs -->
+  <button onclick="myAccFunc('crys')" class="w3-block w3-padding-16 w3-container w3-black"><i class="fa fa-diamond"
+      style="font-size: 0.73em;"></i>
+    <h2>Cristallization conditions</h2>
+  </button>
+  <div id="crys" class="w3-hide">
+
+    <div class="w3-padding w3-third w3-white" style="min-height:400px; overflow:hidden">
+      <h4>Query molecule<h4>
+          <img class="mol-image">
+    </div>
+
+    <!--
+    <div class="w3-padding w3-third w3-white" style="min-height:400px; overflow:hidden">
+      <h2>Select solvent set to rank</h2>
+      <input id="all2" class="w3-check" type="radio" checked="checked" name="solvent-set-cryst">
+      <label>
+        <div class="tooltip">All <span class="tooltiptext">Acetonitrile, Water, DMSO</span></div>
+      </label>
+      <br>
+      <input id="ess2" class="w3-check" type="radio" name="solvent-set-cryst">
+      <label>
+        <div class="tooltip">ESS lab set <span class="tooltiptext">Acetonitrile, Water, DMSO</span></div>
+      </label>
+      <br>
+      <input id="css2" class="w3-check" type="radio" name="solvent-set-cryst">
+      <label>
+        <div class="tooltip">CropSciences set <span class="tooltiptext">Acetonitrile, Water, DMSO</span></div>
+      </label>
+      <br>
+      <input id="diverse2" class="w3-check" type="radio" name="solvent-set-cryst">
+      <label>
+        <div class="tooltip">Diverse set <span class="tooltiptext">Acetonitrile, Water, DMSO</span></div>
+      </label>
+      <br>
+      <br>
+    </div>
+    -->
+
+    <div class="w3-padding w3-third w3-white" style="min-height:400px; overflow:hidden">
+      <h2>Select similarity metric</h2>
+      <input id="custom" class="w3-radio" type="radio" name="distance" value="Custom 2D" checked="checked">
+      <label>Custom 2D</label>
+      <br>
+      <input id="ecfp" class="w3-radio" type="radio" name="distance" value="ecfp">
+      <label>ECFP</label>
+      <br>
+      <br>
+      <button class="w3-button w3-theme" id="runCrys">Run</button>
+    </div>
+
+    <div class="w3-padding w3-third w3-white" style="min-height:400px; overflow:hidden">
+      <!--
+      <h2>Select similarity threshold</h2>
+      <label for="quantity">Minimum similarity (between 0 and 1):</label>
+      <input type="float" id="quantity" name="quantity" min="0" max="1">
+      <br>
+      <br>
+      <br>
+      -->
+    </div>
+
+    <!-- Results -->
+    <button onclick="myAccFunc('rescr')" class="w3-block w3-padding-16 w3-container w3-black">
+      <h3 id="resultsHeaderCryst">Results</h3>
+    </button>
+    <div id="rescr" class="w3-hide">
+
+      <div class="w3-row-padding w3-center w3-margin-top w3-margin-bottom">
+
+        <div class="w3-third">
+          <div class="w3-card w3-container" style="min-height:400px">
+            <h3>Crystallization propensity</h3><br>
+            <div id="propensity"></div>
+          </div>
+        </div>
+
+        <!-- The following results display is obsolete as we cannot do a cryst cond ranking...-->
+        <!--
+        <div class="w3-half">
+          <div class="w3-card w3-container" style="min-height:400px">
+            <h3>Ranking of solvents</h3><br>
+            <div id="ranking"></div>
+            <img id="crysImage">
+            <button class="w3-button w3-theme">Download as table</button>
+            <br>
+          </div>
+        </div>
+      -->
+      </div>
+
+      <div class="w3-row-padding w3-center w3-margin-top w3-margin-bottom">
+        <div class="w3-card w3-container" style="min-height:400px">
+          <h3>Similar compounds in the database</h3><br>
+          <div id="sim"></div>
+          <p>Place here the results from the similarity search</p>
+          <p id="pager"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <!--  
+
+  -->
+  <footer class="w3-container w3-theme-dark w3-padding-16" style="padding-bottom: 5rem !important;">
+    <h4>Solvmate &nbsp;<img width="25rem" src="/static/assets/favicon.svg"></img> &nbsp;an ARTIDA app</h4>
+    <p>Powered by <a href="https://www.w3schools.com/w3css/default.asp" target="_blank">w3.css</a>, love and the MLR
+      team at Bayer</p>
+
+    <p id="printOutput" style="visibility: hidden; font-size: 0px;"> </p>
+    <div style="position:relative;bottom:55px;" class="w3-tooltip w3-right">
+      <span class="w3-text w3-theme-light w3-padding">Go To Top</span>
+      <a class="w3-text-white" href="#myHeader"><span class="w3-xlarge">
+          <i class="fa fa-chevron-circle-up"></i></span></a>
+    </div>
+  </footer>
+
+  <!-- Script for Sidebar, Tabs, Accordions, Progress bars and slideshows -->
+  <script>
+    // Side navigation
+    function w3_open() {
+      var x = document.getElementById("mySidebar");
+      x.style.width = "100%";
+      x.style.fontSize = "40px";
+      x.style.paddingTop = "10%";
+      x.style.display = "block";
+    }
+    function w3_close() {
+      document.getElementById("mySidebar").style.display = "none";
+    }
+
+    // Accordions
+    function myAccFunc(id) {
+      var x = document.getElementById(id);
+      if (x.className.indexOf("w3-show") == -1) {
+        x.className += " w3-show";
+      } else {
+        x.className = x.className.replace(" w3-show", "");
+      }
+    }
+
+    function accIsVisible(id) {
+      var x = document.getElementById(id);
+      return x.className.indexOf("w3-show") != -1;
+    }
+
+    // Slideshows
+    var slideIndex = 1;
+
+    function plusDivs(n) {
+      slideIndex = slideIndex + n;
+      showDivs(slideIndex);
+    }
+
+    function showDivs(n) {
+      var x = document.getElementsByClassName("mySlides");
+      if (n > x.length) { slideIndex = 1 }
+      if (n < 1) { slideIndex = x.length };
+      for (i = 0; i < x.length; i++) {
+        x[i].style.display = "none";
+      }
+      x[slideIndex - 1].style.display = "block";
+    }
+
+    if (0) {
+
+      showDivs(1);
+
+      // Progress Bars
+      function move() {
+        var elem = document.getElementById("myBar");
+        var width = 5;
+        var id = setInterval(frame, 10);
+        function frame() {
+          if (width == 100) {
+            clearInterval(id);
+          } else {
+            width++;
+            elem.style.width = width + '%';
+            elem.innerHTML = width * 1 + '%';
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    html {
+      --blue: #72A1E5;
+      --indigo: #6610f2;
+      --purple: #6f42c1;
+      --pink: #e83e8c;
+      --red: #dc3545;
+      --orange: #BA5A31;
+      --yellow: #ffc107;
+      --green: #28a745;
+      --teal: #20c997;
+      --cyan: #17a2b8;
+      --white: #fff;
+      --gray: #797676;
+      --gray-dark: #333;
+      --primary: #30638E;
+      --secondary: #FFA630;
+      --success: #3772FF;
+      --info: #C0E0DE;
+      --warning: #ED6A5A;
+      --danger: #ED6A5A;
+
+      --header-bar-bg: #829fca;
+      --header-bar-fg: #ffffff;
+
+      --tabs-fg: #000000;
+      --tabs-bg: #949494;
+      --light: #ffffff;
+      --light-gray: #cccccc;
+      /* org light: */
+      /* --light: #D3F3EE; */
+      --dark: #403F4C;
+
+      background-color: var(--light);
+    }
+
+    /* Tooltip container */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      border-bottom: 1px dotted black;
+      /* If you want dots under the hoverable text */
+    }
+
+    /* Tooltip text */
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 120px;
+      background-color: #000;
+      color: #fff;
+      text-align: center;
+      padding: 5px 0;
+      border-radius: 6px;
+
+      /* Position the tooltip text - see examples below! */
+      position: absolute;
+      z-index: 1;
+    }
+
+    /* Show the tooltip text when you mouse over the tooltip container */
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+    }
+
+    .center {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+      width: 50%;
+    }
+
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* background-color: #F45B69 !important; */
+    /* old: #403f4c */
+    button:hover {
+      background-color: #829fca !important;
+    }
+
+    .my-center {
+      margin: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -ms-transform: translateY(-50%) translateX(-50%);
+      transform: translateY(-50%) translateX(-50%);
+    }
+
+    .snButActive {
+      background-color: var(--teal) !important;
+    }
+
+    #textAreaSolventSelection {
+      height: 20vh;
+      width: 30vw;
+    }
+  </style>
+
+  <script src="static/js/app.js"></script>
+
+</body>
+
+</html>
