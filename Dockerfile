@@ -3,7 +3,7 @@ ENV PATH="/root/miniconda3/bin:${PATH}"
 ARG PATH="/root/miniconda3/bin:${PATH}"
 RUN apt-get update
 
-RUN apt-get install -y wget && apt-get install -y libxrender1 libxext6 && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
+RUN apt-get install -y wget && apt-get install -y zip && apt-get install -y libxrender1 libxext6 && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
 
 RUN wget \
     https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
