@@ -3,16 +3,14 @@ from solvmate import xtb_solv
 from sklearn import ensemble
 from sklearn import impute
 
+from solvmate.ranksolv.featurizer import AbstractFeaturizer, PriorFeaturizer
+
 
 class AbsoluteRecommender:
-    def __init__(self, reg=None) -> None:
-        if reg is None:
-            reg = ensemble.ExtraTreesRegressor(
-                n_jobs=8,
-                n_estimators=1000,
-            )
+    def __init__(self, reg=None, featurizer: AbstractFeaturizer = None) -> None:
         self.reg = reg
         self.imputer = impute.SimpleImputer()
+        self.featurizer = featurizer
 
     def recommend(
         self,
@@ -31,8 +29,8 @@ class AbsoluteRecommender:
             ]
         )
         # y = data["conc"]
-        data = self._featurize(data, fit=False)
-        data["preds"] = self.reg.predict(np.vstack(data["X"]))
+        X = self._featurize(data, fit=False)
+        data["preds"] = self.reg.predict(X)
 
         recs = []
         for smi in smiles:
@@ -51,64 +49,35 @@ class AbsoluteRecommender:
     ) -> list[list[str]]:
         self.all_solvents = sorted(data["solvent SMILES"].unique().tolist())
 
-        data = self._featurize(
-            data,
-            fit=True,
-        )
-        self.reg.fit(np.vstack(data["X"]), data["conc"])
+        X = self._featurize(data, fit=True)
+        self.reg.fit(X, data["conc"])
 
-    def _featurize(self, data: pd.DataFrame, fit: bool) -> np.ndarray:
-        db_file = DATA_DIR / "xtb_features_predict.db"
-        xs = xtb_solv.XTBSolv(db_file=db_file)
-        xs.setup_db()
-
-        all_smiles = list(data["solute SMILES"].unique()) + list(
-            data["solvent SMILES"].unique()
-        )
-
-        print("runnning xtb calculations ...")
-        all_smiles = list(set(all_smiles))
-        xs.run_xtb_calculations(smiles=all_smiles)
-        print("... done runnning xtb calculations")
-
-        xtb_features = get_xtb_features_data(db_file=db_file)
-        xtb_features_piv = xtb_features.drop_duplicates(["smiles", "solvent"]).pivot(
-            index="smiles",
-            columns="solvent",
-        )
-
-        xtb_features_piv_solu = xtb_features_piv.copy()
-        xtb_features_piv_solv = xtb_features_piv.copy()
-        xtb_features_piv_solu.columns = [
-            str(col) + "__solu" for col in xtb_features_piv.columns.values
-        ]
-        xtb_features_piv_solv.columns = [
-            str(col) + "__solv" for col in xtb_features_piv.columns.values
-        ]
+    def _featurize(self, data: pd.DataFrame, fit: bool) -> np.array:
         if fit:
-            self.feature_cols = [
-                col + suf
-                for col in map(str, xtb_features_piv.columns)
-                if "smiles" not in col.lower()
-                for suf in ["__solu", "__solv"]
-            ]
-        data = data.merge(
-            xtb_features_piv_solu,
-            left_on="solute SMILES",
-            right_index=True,
-        )
-        data = data.merge(
-            xtb_features_piv_solv,
-            left_on="solvent SMILES",
-            right_index=True,
-        )
-
-        X = data[self.feature_cols].values
-
-        if fit:
-            X = self.imputer.fit_transform(X)
+            self.featurizer.phase = "train"
         else:
-            X = self.imputer.transform(X)
+            self.featurizer.phase = "predict"
 
-        data["X"] = list(X)
-        return data
+        smiles = (
+            data["solute SMILES"].unique().tolist()
+            + data["solvent SMILES"].unique().tolist()
+        )
+
+        smi_to_x = {
+            smi: x for smi, x in zip(smiles, self.featurizer.run_single(smiles))
+        }
+
+        X_solu = np.vstack(data["solute SMILES"].map(smi_to_x))
+        if len(X_solu.shape) == 1:
+            X_solu = X_solu.reshape(-1, 1)
+        X_solv = np.vstack(data["solvent SMILES"].map(smi_to_x))
+        if len(X_solv.shape) == 1:
+            X_solv = X_solv.reshape(-1, 1)
+
+        if isinstance(self.featurizer, PriorFeaturizer):
+            # The prior featurizer intends to only encode the solvent side:
+            X = X_solv
+        else:
+            X = np.hstack([X_solu, X_solv])
+
+        return X

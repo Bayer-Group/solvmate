@@ -4,6 +4,7 @@ import tornado
 import tornado.ioloop
 import tornado.web
 from solvmate import *
+from solvmate.app.handlers.batch_file_upload_handler import BatchFileUploadHandler
 from solvmate.app.handlers.conversion_handlers import (
     MDLMolToSmilesHandler,
     SmilesToMDLMolHandler,
@@ -15,6 +16,7 @@ from solvmate.app.handlers.knn_solub_recommend_handler import KNNSolubRecommendH
 from solvmate.app.handlers.login_handler import LoginHandler
 from solvmate.app.handlers.main_handler import MainHandler
 from solvmate.app.handlers.meta_data_handler import MetaDataHandler
+from solvmate.app.handlers.single_file_upload_handler import SingleFileUploadHandler
 from solvmate.app.handlers.smiles_input_handler import SmilesInputHandler
 from solvmate.app.handlers.solub_recommend_handler import SolubRecommendHandler
 from solvmate.app.handlers.solvent_selection_handler import (
@@ -41,6 +43,8 @@ async def main():
             (r"/SolventSelectionFetchHandler", SolventSelectionFetchHandler),
             (r"/MDLMolToSmilesHandler", MDLMolToSmilesHandler),
             (r"/SmilesToMDLMolHandler", SmilesToMDLMolHandler),
+            (r"/BatchFileUploadHandler", BatchFileUploadHandler),
+            (r"/SingleFileUploadHandler", SingleFileUploadHandler),
             (r"/login", LoginHandler),
             (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": static_path_dir}),
         ],
@@ -49,13 +53,19 @@ async def main():
         cookie_secret="__TODO:_GENERATE_YOUR_OWN_RANDOM_VALUE_HERE__",
     )
 
-    http_server = tornado.httpserver.HTTPServer(
-        application,
-        ssl_options={
-            "certfile": "cert/cert.pem",
-            "keyfile": "cert/key.pem",
-        },
-    )
+    try:
+        http_server = tornado.httpserver.HTTPServer(
+            application,
+            ssl_options={
+                "certfile": "cert/cert.pem",
+                "keyfile": "cert/key.pem",
+            },
+        )
+    except:
+        info("no cert file found, defaulting to http")
+        http_server = tornado.httpserver.HTTPServer(
+            application,
+        )
 
     http_server.listen(8890)
     await asyncio.Event().wait()

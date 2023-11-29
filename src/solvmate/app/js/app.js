@@ -113,6 +113,37 @@ var displayIupacInElt = function (eltId, smi) {
     });
 };
 
+const handleFileUploadButtonClick = () => {
+    const fileInput = document.getElementById("fileUploadInput")
+    const filename = fileInput.files[0].name;
+    var file = fileInput.files[0];
+    if (file) {
+        var reader = new FileReader();
+        reader.readAsText(file, "UTF-8");
+        reader.onload = function (evt) {
+            // perform typical post request here and get the result, then write it back into
+            // the smiles input text field.
+            // document.getElementById("fileContents").innerHTML = evt.target.result;
+
+            fetch("SingleFileUploadHandler", {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ "filename": filename, "content": evt.target.result })
+            }).then(res => res.json()).then(res => {
+
+                const smiInput = document.getElementById("smiInput");
+                smiInput.value = res["smiles"];
+                smiInput.dispatchEvent(new Event('change'));
+            }
+            );
+        };
+
+        reader.onerror = function (evt) {
+            // document.getElementById("fileContents").innerHTML = "error reading file";
+        }
+    }
+};
+
 
 var doQuery = function (evt) {
     // Triggered whenever the user changed the
@@ -766,8 +797,9 @@ var solub_setupPages = function () {
 };
 
 const getMolBlockFromEditor = function (molEditor,) {
-    molPaintJS.dump(molEditor, "printOutput", "V3000");
-    return document.getElementById("printOutput").innerHTML;
+    //molPaintJS.dump(molEditor, "printOutput", "V3000");
+    //return document.getElementById("printOutput").innerHTML;
+    return molPaintJS.getMDLv3000(molEditor);
 }
 
 const setupMolEditor = function () {
@@ -796,6 +828,20 @@ const setupMolEditor = function () {
     });
 };
 
+const updateSmiInput = function () {
+    if (smiInput.value) {
+        fetch("SmilesToMDLMolHandler", {
+            method: "POST",
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ "smiles": smiInput.value })
+        }).then(res => res.json()).then(res => {
+            console.log("Request complete! response:", res);
+            mp.setMolecule(res["mdl_mol"]);
+            doQuery();
+        });
+    }
+};
+
 window.addEventListener('load', function () {
     console.log("web page loaded!");
     var appDiv = document.createElement("div");
@@ -811,7 +857,7 @@ window.addEventListener('load', function () {
     // So we need to hook the event listener onto
     // change events within the input element:
     smiInput.addEventListener(
-        "change", doQuery
+        "change", updateSmiInput //doQuery
     );
 
     runSol.addEventListener(

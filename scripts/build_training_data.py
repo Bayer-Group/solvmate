@@ -22,8 +22,16 @@ def load_open_notebook_dataset() -> pd.DataFrame:
 
     df = pd.DataFrame(df)
     df["solvent SMILES"] = df["solvent SMILES"].apply(_canon_else_none)
+    df["solute SMILES"] = df["solute SMILES"].apply(_canon_else_none)
     assert df["solvent SMILES"].isna().sum() < len(df) * 0.1
     df["source"] = "open_notebook"
+
+    if os.environ.get("_SM_Y_SCRAMBLING"):
+        warn("performing y scrambling")
+        conc = df["conc"].tolist()
+        random.shuffle(conc)
+        df["conc"] = conc
+
     return df
 
 
@@ -76,6 +84,7 @@ def load_novartis_dataset():
             conc = rank_map[conc]
             solvent_smiles = solvent_to_smiles[solv]
             solvent_smiles = Chem.CanonSmiles(solvent_smiles)
+            smiles = _canon_else_none(smiles)
             df_nova.append(
                 {
                     "smiles": smiles,
@@ -91,6 +100,12 @@ def load_novartis_dataset():
     #    (~df_nova["mol_compound"].isna()) & (~df_nova["mol_solvent_mixture"].isna())
     # ]
     df_nova["source"] = "nova"
+
+    if os.environ.get("_SM_Y_SCRAMBLING"):
+        warn("performing y scrambling")
+        conc = df_nova["conc"].tolist()
+        random.shuffle(conc)
+        df_nova["conc"] = conc
     return df_nova
 
 

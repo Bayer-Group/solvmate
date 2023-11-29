@@ -15,8 +15,7 @@ import subprocess
 import random
 
 from pathlib import Path
-
-from solvmate import random_fle
+from solvmate import *
 
 
 def obabel_conversion(input: str, format_in: str, format_out: str):
@@ -33,7 +32,7 @@ def obabel_conversion(input: str, format_in: str, format_out: str):
 
 
 """
-    tmp_file = str(random_fle(format_in))
+    tmp_file = f"/tmp/__tmp_obabel_in_{random.randint(100000,100000000)}.{format_in}"
     tmp_path = Path(tmp_file)
     tmp_path.write_text(input)
     rslt = subprocess.check_output(["obabel", tmp_file, "-o", format_out]).decode(
@@ -98,26 +97,12 @@ def mol_to_image(
     width=300,
     height=300,
 ) -> Image:
-    tmp_fle = str(random_fle("jpg"))
+    img = random_fle("jpg")
     Draw.MolToImageFile(
-        mol, filename=tmp_fle, format="JPG", size=(width, height)
+        mol, filename=str(img.resolve()), format="JPG", size=(width, height)
     )
-    img = Image.open(tmp_fle)
+    img = Image.open(img)
     return deepcopy(img)
-
-
-def opsin_iupac_to_smiles(iupac) -> str:
-    """
-    Forces the actual parsing of the IUPAC via
-    the OPSIN tool
-    :param iupac: The IUPAC string to parse
-    :return: The resulting SMILES string.
-    """
-    tmp_fle = str(random_fle("in"))
-    with open(tmp_fle, "w") as fout:
-        fout.write(iupac)
-    smi = os.popen("opsin " + tmp_fle).read() # nosec
-    return smi
 
 
 def canonicalize_smiles(smi):

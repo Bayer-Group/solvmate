@@ -16,6 +16,7 @@ class CrystPropensHandler(BaseHandler):
         try:
             req = json.loads(self.request.body)
             req_smi = req["smiles"]
+            req_smi = Chem.CanonSmiles(req_smi)
 
             mol = Chem.MolFromSmiles(req_smi)
             html_resp = crystal_propensity_heuristic(

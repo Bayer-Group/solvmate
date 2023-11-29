@@ -24,8 +24,27 @@ from rdkit.Chem import AllChem,rdDistGeom
 import tempfile
 
 # Path to the xtb binary
-
 BIN_XTB = os.getenv("XS__BIN_XTB") or "xtb"
+
+def _patch_bin_xtb_from_deps_dir_if_possible(d:Path):
+    global BIN_XTB
+    # Fix for windows release
+    for xtb_bin_candidate in [
+        "xtb.exe", "xtb.out", "xtb"
+    ]:
+        xtb_bin_candidate = d / xtb_bin_candidate
+        if xtb_bin_candidate.exists() and xtb_bin_candidate.is_file():
+            BIN_XTB = str(xtb_bin_candidate.resolve())
+            info(
+                f"found a xtb binary at {xtb_bin_candidate}!"
+            )
+
+    for fle in d.iterdir():
+        if fle.is_dir():
+            # recursively walk the directory tree
+            _patch_bin_xtb_from_deps_dir_if_possible(fle)
+
+_patch_bin_xtb_from_deps_dir_if_possible(PROJECT_ROOT / "deps")
 
 import subprocess
 import time 
@@ -59,10 +78,10 @@ else:
 # to improve speed and reduce strain,
 # fallback to potentially memory mapped, or
 # non-mem mapped file system otherwise...
-TMP_ROOT = Path("/dev/shm/") # nosec
+TMP_ROOT = Path("/dev/shm/")
 if not TMP_ROOT.exists():
     print("Warning: could not find /dev/shm/ mem-mapped io not possible")
-    TMP_ROOT = Path("/tmp") # nosec
+    TMP_ROOT = Path("/tmp")
 if not TMP_ROOT.exists():
     TMP_ROOT = tempfile.gettempdir()
 
@@ -165,7 +184,7 @@ class XTBSolv:
         self.db_file = db_file
 
     def get_dataframe(self):
-        db = sqlite3.connect(self.db_file)
+        db = sqlite3.connect(self.db_file,timeout=SQLITE_TIMEOUT_SECONDS,)
         df = pd.read_sql("SELECT * FROM solv_en",con=db)
         db.close()
         return df
@@ -206,7 +225,7 @@ class XTBSolv:
                 #
                 # As suggested in https://stackoverflow.com/questions/48763362/python-subprocess-kill-with-timeout
                 # we apply the following workaround:
-                parent = subprocess.Popen(cmd,shell=True) # nosec
+                parent = subprocess.Popen(cmd,shell=True)
                 for _ in range(XTB_TIMEOUT_SECONDS): 
                     if parent.poll() is not None:  # process just ended
                         break
@@ -331,7 +350,7 @@ class XTBSolv:
         return success, solv_ens
 
     def setup_db(self):
-        db = sqlite3.connect(self.db_file)
+        db = sqlite3.connect(self.db_file,timeout=SQLITE_TIMEOUT_SECONDS)
         energy_columns = ",".join([et+" REAL" for et in self.ENERGY_TYPES])
         db.execute(
             f"CREATE table IF NOT EXISTS solv_en (smiles TEXT, solvent TEXT, {energy_columns})"
@@ -344,15 +363,10 @@ class XTBSolv:
         db.close()
 
     def _run_single_combination(self, smi:str, solvent:str,):
-        db = sqlite3.connect(self.db_file)
         try:
             mol = Chem.MolFromSmiles(smi)
-            if mol is not None:
-                mol = self.embed_molecule(mol)
-                success,outp = self.run_xtb_calculation(mol,solvent)
-            else:
-                success,outp = False,""
-
+            mol = self.embed_molecule(mol)
+            success,outp = self.run_xtb_calculation(mol,solvent)
         except AssertionError:
             raise
         except KeyboardInterrupt:
@@ -360,6 +374,7 @@ class XTBSolv:
         except:
             success,outp = False,""
 
+        db = sqlite3.connect(self.db_file,timeout=SQLITE_TIMEOUT_SECONDS)
         if success:
             db.execute(
                 "INSERT INTO solv_raw(smiles,solvent,output) VALUES (?,?,?)",
@@ -386,8 +401,9 @@ class XTBSolv:
         verbose=False,
         solvents=None,
         ) -> None:
-        db = sqlite3.connect(self.db_file)
-        assert len(smiles) == len(set(smiles)), "smiles contains duplicates!"
+        db = sqlite3.connect(self.db_file,timeout=SQLITE_TIMEOUT_SECONDS)
+
+        smiles = list(set(smiles)) # remove duplicates
 
         if solvents is None or solvents == "all":
             solvents = SOLVENTS_XTB
@@ -420,7 +436,7 @@ class XTBSolv:
 
 
     def drop_table_solv_en(self):
-        db = sqlite3.connect(self.db_file)
+        db = sqlite3.connect(self.db_file,timeout=SQLITE_TIMEOUT_SECONDS)
         db.execute("DROP TABLE IF EXISTS solv_en")
         db.commit()
         db.close()
@@ -436,7 +452,7 @@ class XTBSolv:
         self._transfer_raw_to_en()
 
     def _transfer_raw_to_en(self):
-        db = sqlite3.connect(self.db_file)
+        db = sqlite3.connect(self.db_file,timeout=SQLITE_TIMEOUT_SECONDS)
         loop_counter = 0
         for smi,solvent,outp in db.execute("SELECT smiles, solvent, output FROM solv_raw"):
                 # See also method run_xtb_calculations for a similar behavior

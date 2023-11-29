@@ -1,6 +1,15 @@
 from solvmate import *
 from solvmate.ranksolv import ood
-from solvmate.ranksolv.featurizer import XTBFeaturizer, CosmoRSFeaturizer
+from solvmate.ranksolv.featurizer import (
+    CountECFPFeaturizer,
+    ECFPFeaturizer,
+    ECFPSolventOnlyFeaturizer,
+    HybridFeaturizer,
+    PriorFeaturizer,
+    RandFeaturizer,
+    XTBFeaturizer,
+    CosmoRSFeaturizer,
+)
 from solvmate.ranksolv.reference_model import AbsoluteRecommender
 from solvmate.ranksolv.jack_knife_recommender import JackKnifeRecommender
 from solvmate.ranksolv.recommender import Recommender
@@ -21,43 +30,219 @@ from scipy.stats import spearmanr, pearsonr, kendalltau
 import tqdm
 
 
+def apply_solvent_cv(pairs: pd.DataFrame) -> pd.DataFrame:
+    """
+    Implements the split for the following control experiment:
+    Each cross fold corresponds to one of the top 5 solvents.
+    Solvents that are not part of the top 5 solvents will be
+    randomly distributed. Then we check whether we can
+    generalize between these cross folds, aka between
+    buckets of the top 5 most frequent solvents
+
+    >>> ssa = "solvent SMILES a"
+    >>> ssb = "solvent SMILES b"
+    >>> solvents = "ABCDEFGHIJKLMN"
+    >>> top5 = solvents[:5]
+    >>> pairs = pd.DataFrame([{ssa: sa, ssb: sb} for sa in solvents for sb in solvents])
+    >>> pairs_cv = apply_solvent_cv(pairs)
+
+    The top5 "cross contamination" has been removed:
+    >>> len(pairs), len(pairs_cv)
+    (196, 171)
+
+    """
+    pairs = pairs.copy()
+    top_5 = pairs["solvent SMILES a"].value_counts().iloc[0:5].index.tolist()
+
+    solv_clust = []
+    for _, row in pairs.iterrows():
+        sa = row["solvent SMILES a"]
+        sb = row["solvent SMILES b"]
+        if sa in top_5 and sb in top_5:
+            # This is "a bridge" between the two solvents,
+            # so label it for removal later
+            solv_clust.append(-1)
+        elif sa in top_5:
+            solv_clust.append(top_5.index(sa))
+        elif sb in top_5:
+            solv_clust.append(top_5.index(sb))
+        else:  # both not in top
+            solv_clust.append(random.randint(0, len(top_5) - 1))
+
+    pairs["cross_fold"] = solv_clust
+    pairs = pairs[pairs["cross_fold"] != -1]
+    return pairs
+
+
+def split_on_solvent_cv(
+    pairs: pd.DataFrame, cv_test: int
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Implements the split for the following control experiment:
+    Each cross fold corresponds to one of the top 5 solvents.
+    Solvents that are not part of the top 5 solvents will be
+    randomly distributed. Then we check whether we can
+    generalize between these cross folds, aka between
+    buckets of the top 5 most frequent solvents
+
+    >>> ssa = "solvent SMILES a"
+    >>> ssb = "solvent SMILES b"
+    >>> solvents = "ABCDEFGHIJKLMN"
+    >>> pairs = pd.DataFrame([{ssa: sa, ssb: sb} for sa in solvents for sb in solvents])
+    >>> rslt = split_on_solvent_cv(pairs,1)
+    >>> len(rslt[0])
+    139
+    >>> len(rslt[1])
+    57
+    >>> rslt = split_on_solvent_cv(pairs,2)
+    >>> len(rslt[0])
+    157
+    >>> len(rslt[1])
+    39
+
+
+    """
+    assert 0 <= cv_test <= 5, f"constraint failed: 0 <= {cv_test} <= 5"
+    cv_test = cv_test % 5
+    pairs = pairs.copy()
+    top_N = pairs["solvent SMILES a"].value_counts().index.tolist()
+    solv_to_cv = {solv: idx % 5 for idx, solv in enumerate(top_N)}
+    pairs["solv_cv_a"] = pairs["solvent SMILES a"].map(solv_to_cv)
+    pairs["solv_cv_b"] = pairs["solvent SMILES b"].map(solv_to_cv)
+    pairs["solv_cv"] = [
+        min(cv_a, cv_b)
+        for cv_a, cv_b in zip(pairs["solv_cv_a"].tolist(), pairs["solv_cv_b"].tolist())
+    ]
+
+    pairs_test = pairs[pairs["solv_cv"] == cv_test]
+    pairs_train = pairs[pairs["solv_cv"] != cv_test]
+
+    solv_test = [s for s, cv in solv_to_cv.items() if cv == cv_test]
+    assert len(pairs_test) + len(pairs_train) == len(pairs)
+
+    return pairs_train, pairs_test, solv_test
+
+
 class RecommenderFactory:
     def __init__(
         self,
         n_estimators_range=None,
-        featurizations_range=None,
+        featurizers=None,
         abs_strat_range=None,
         sources=None,
+        regs=None,
     ) -> None:
         if n_estimators_range is None:
-            n_estimators_range = [
-                100,  # TODO: change back n_estimators to be 1000!
+            n_estimators_range = [100]  # n_estimators for final retrain!
+
+        if featurizers is None:
+            featurizers = [
+                # CosmoRSFeaturizer(
+                #    phase="train",
+                #    pairwise_reduction="concat",
+                #    feature_name="cosmors",
+                # ),
+                HybridFeaturizer(
+                    phase="train",
+                    pairwise_reduction="diff",
+                    feature_name="hybrid",
+                    xtb_featurizer=XTBFeaturizer(
+                        phase="train",
+                        pairwise_reduction="diff",
+                        feature_name="xtb",
+                    ),
+                    ecfp_featurizer=CountECFPFeaturizer(
+                        phase="train",
+                        pairwise_reduction="diff",
+                        feature_name="ecfp_count",
+                    ),
+                ),
+                RandFeaturizer(
+                    phase="train",
+                    pairwise_reduction="diff",
+                    feature_name="rand",
+                ),
+                PriorFeaturizer(
+                    phase="train",
+                    pairwise_reduction="concat",
+                    feature_name="prior",
+                ),
+                ECFPSolventOnlyFeaturizer(
+                    phase="train",
+                    pairwise_reduction="concat",
+                    feature_name="ecfp_solv",
+                ),
+                CountECFPFeaturizer(
+                    phase="train", pairwise_reduction="diff", feature_name="ecfp_count"
+                ),
+                XTBFeaturizer(
+                    phase="train",
+                    pairwise_reduction="diff",
+                    feature_name="xtb",
+                ),
+                ECFPFeaturizer(
+                    phase="train", pairwise_reduction="diff", feature_name="ecfp_bit"
+                ),
+            ]
+        self.featurizers = featurizers
+
+        if abs_strat_range is None:
+            abs_strat_range = [
+                "absolute",
+                "mean",
             ]
 
-        self.featurizations_range = featurizations_range
+        self.abs_strat_range = abs_strat_range
 
         # The regression models to consider.
-        regs = [
-            ensemble.ExtraTreesRegressor(
-                n_jobs=N_JOBS,
-                n_estimators=n_estimators,
-            )
-            for n_estimators in n_estimators_range
-        ]
-        # + [DummyClassifier(strategy="prior", random_state=None, constant=None)] # obsolete
+        if regs is None:
+            regs = [
+                ensemble.ExtraTreesRegressor(
+                    n_jobs=N_JOBS,
+                    n_estimators=n_estimators,
+                )
+                for n_estimators in n_estimators_range
+            ]
+            # + [DummyClassifier(strategy="prior", random_state=None, constant=None)] # obsolete
         self.regs = regs
         self.sources = sources
 
     def train_and_eval_recommenders(
         self,
         perform_cv: bool,
+        perform_butina_cv: bool,
+        perform_solvent_cv: bool,
+        nova_as_ood: bool,
         save_recommender: bool,
+        job_name: str,
+        only_source: str,
     ):
 
         td = get_training_data()
         pairs = get_pairs_data()
 
-        ood_data = ood.parse_ood_data()
+        assert not (
+            bool(nova_as_ood) and bool(only_source)
+        ), "nova_as_ood can only be set without only_source option!"
+        if only_source:
+            print("only considereing source: ", only_source)
+            print("train data before:", len(td))
+            td = td[td.source == only_source]
+            print("train data after:", len(td))
+
+            print("pairs data before:", len(pairs))
+            pairs = pairs[pairs.source == only_source]
+            print("pairs data after:", len(pairs))
+
+        if nova_as_ood:
+            warn("regarding nova as ood dataset!")
+            ood_data = td[td.source == "nova"]
+            td = td[td.source != "nova"]
+        else:
+            try:
+                ood_data = ood.parse_ood_data_bayer()
+            except:
+                ood_data = ood.parse_ood_data()
 
         top_pairs = Recommender.to_top_pairs(pairs, top_pairs_strategy="doubles")
 
@@ -79,26 +264,23 @@ class RecommenderFactory:
         if perform_cv:
             add_cross_fold_by_col(pairs, col="solute SMILES")
 
+        if perform_butina_cv:
+            pairs = pairs[~pairs["solute SMILES"].isna()]
+            pairs = pairs[~pairs["solute SMILES"].apply(Chem.MolFromSmiles).isna()]
+            add_cv_by_butina_clustering(pairs, col="solute SMILES")
+
+        # if perform_solvent_cv:
+        # pairs = apply_solvent_cv(pairs)
+
         if self.sources is not None:
             print(f"only keeping from sources {self.sources}")
             pairs = pairs[pairs["source"].isin(self.sources)]
 
         for reg in tqdm.tqdm(self.regs):
 
-            for featurizer in [
-                # CosmoRSFeaturizer(
-                #    phase="train",
-                #    pairwise_reduction="concat",
-                #    feature_name="cosmors",
-                # ),
-                XTBFeaturizer(
-                    phase="train",
-                    pairwise_reduction="diff",
-                    feature_name="xtb",
-                ),
-            ]:
+            for featurizer in self.featurizers:
                 stats = []
-                for to_abs_strat in ["mean"]:
+                for to_abs_strat in self.abs_strat_range:
                     if "DummyClassifier" in str(reg):
                         if to_abs_strat != "absolute":
                             continue  # DummyClassifier sometimes crashes for relative
@@ -110,8 +292,10 @@ class RecommenderFactory:
                     is_absolute = False
                     if to_abs_strat == "absolute":
                         is_absolute = True
-
-                        rc = AbsoluteRecommender(reg=reg)
+                        rc = AbsoluteRecommender(
+                            reg=reg,
+                            featurizer=featurizer,
+                        )
                     else:
                         rc = Recommender(
                             reg=reg,
@@ -120,17 +304,33 @@ class RecommenderFactory:
 
                     if perform_cv:
                         for cv_test in pairs["cross_fold"].unique():
-                            pairs_train, pairs_test = (
-                                pairs[pairs["cross_fold"] != cv_test],
-                                pairs[pairs["cross_fold"] == cv_test],
-                            )
 
-                            td_test = td[
-                                td["solute SMILES"].isin(pairs_test["solute SMILES"])
-                            ]
-                            td_train = td[
-                                ~td["solute SMILES"].isin(pairs_test["solute SMILES"])
-                            ]
+                            if perform_solvent_cv:
+                                (
+                                    pairs_train,
+                                    pairs_test,
+                                    solv_test,
+                                ) = split_on_solvent_cv(pairs, cv_test)
+                            else:
+                                pairs_train, pairs_test = (
+                                    pairs[pairs["cross_fold"] != cv_test],
+                                    pairs[pairs["cross_fold"] == cv_test],
+                                )
+
+                            if perform_solvent_cv:
+                                td_test = td[td["solvent SMILES"].isin(solv_test)]
+                                td_train = td[~td["solvent SMILES"].isin(solv_test)]
+                            else:
+                                td_test = td[
+                                    td["solute SMILES"].isin(
+                                        pairs_test["solute SMILES"]
+                                    )
+                                ]
+                                td_train = td[
+                                    ~td["solute SMILES"].isin(
+                                        pairs_test["solute SMILES"]
+                                    )
+                                ]
                             assert len(td_test) + len(td_train) == len(td)
                             assert len(td)
                             assert len(td_test)
@@ -139,6 +339,10 @@ class RecommenderFactory:
                             if is_absolute:
                                 # The absolute model is trained on singletons
                                 rc.fit(td_train)
+                                if perform_solvent_cv:
+                                    for solv in solv_test:
+                                        if solv not in rc.all_solvents:
+                                            rc.all_solvents.append(solv)
                             else:
                                 rc = Recommender(
                                     reg=reg,
@@ -153,8 +357,9 @@ class RecommenderFactory:
                             # TODO: refactor into method call
                             rc.top_pairs_ = top_pairs
                             print("> rec")
+                            smis_test = td_test["solute SMILES"].unique().tolist()
                             preds_all = rc.recommend(
-                                smiles=td_test["solute SMILES"].tolist(),
+                                smiles=smis_test,
                                 pairs=rec_pairs,
                             )
                             print("< rec")
@@ -166,7 +371,7 @@ class RecommenderFactory:
                                 }
                                 for (preds, solute_smiles) in zip(
                                     preds_all,
-                                    td_test["solute SMILES"],
+                                    smis_test,
                                 )
                                 for pred_place, solvent_smiles in enumerate(preds)
                             )
@@ -196,6 +401,24 @@ class RecommenderFactory:
                                         reals_to_placement(g["conc"]),
                                     )[0],
                                 )
+
+                            if os.environ.get("_SM_DUMP_PREDS"):
+                                dj = data_join.copy()
+                                dj["reg"] = str(reg)
+                                dj["featurizer"] = str(featurizer)
+                                dj["feature_name"] = featurizer.feature_name
+                                dj["pairwise_reduction"] = featurizer.pairwise_reduction
+                                dj["to_abs_strat"] = to_abs_strat
+                                dj["created_at"] = datetime.datetime.now()
+                                dj_fle = DATA_DIR / "preds_dump.pkl"
+                                if dj_fle.exists():
+                                    dj = pd.concat([joblib.load(dj_fle), dj])
+
+                                joblib.dump(
+                                    value=dj,
+                                    filename=dj_fle,
+                                )
+
                             spears = pd.Series(np.array(spears))
                             kts = pd.Series(np.array(kts))
 
@@ -236,7 +459,9 @@ class RecommenderFactory:
                             if save_recommender:
                                 rc.save(DATA_DIR / f"recommender_{cv_test}.pkl")
 
-                io_store_stats(pd.DataFrame(stats))
+                stats = pd.DataFrame(stats)
+                stats["job_name"] = job_name
+                io_store_stats(stats)
 
         if False:
             rc_fles = list(DATA_DIR.glob("recommender_*.pkl"))

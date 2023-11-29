@@ -3,7 +3,8 @@
 # Solvmate 
 A practical ML framework for the recommendation of organic solvents
 based on the paper
-*Solvmate - A hybrid physical/ML approach to solvent recommendation leveraging a rank-based problem framing* (**citation link will follow**).
+*Solvmate: A Practical Open Source Solvent Recommender based on Differential Solubility and Semiempirical
+Feature Representations* (**citation link will follow**).
 
 Given a compound as SMILES, and set of solvents as IUPAC names,
 the solvents are recommended in increasing solubility.

@@ -9,7 +9,7 @@ import sys
 
 
 from tqdm import tqdm
-from solvmate import DATA_DIR, random_fle
+from solvmate import DATA_DIR,random_fle
 
 from solvmate.ccryst.utils import in_chunks, run_in_parallel
 
@@ -22,7 +22,6 @@ and SMILES out of the contained .cif-files
 and amalgamate this information into a single
 CSV file.
 """
-
 
 cod_root = DATA_DIR / "cod"
 
@@ -238,7 +237,7 @@ class CifToSmilesConverter:
                 + str(cif)
                 + " -O "
                 + str(self.tmp_file_name)
-            )  # nosec
+            ) # nosec
             if rslt == 0:
                 return self.tmp_file_name.read_text()
             else:

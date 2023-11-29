@@ -124,8 +124,10 @@ class AuthHandler:
             return "uuid" in user and user["uuid"] == uuid
 
 
+# Instances for testing, replaced by secret script:
 auth_instance = AuthHandler(Path(__file__).parent / ".auth.json")
 auth_instance.load_users_db()
+auth_instance.add_user("user", "solvmate")
 
 # Use the following, e.g. in a private script to create new users:
 # auth_instance.add_user("admin", "<insert-password here>")

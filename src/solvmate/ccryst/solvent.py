@@ -18,8 +18,8 @@ import sys
 import numpy as np
 from subprocess import PIPE, Popen
 from typing import Optional, Tuple
-from solvmate import random_fle
 
+from solvmate import *
 from solvmate.ccryst.utils import Silencer
 
 solvents = """
@@ -551,11 +551,12 @@ def direct_iupac_to_smiles(iupac) -> Tuple[str, str]:
         - the resulting SMILES string (empty if failure)
         - the error message (empty if success)
     """
-    tmp_fle = str(random_fle("in"))
+    tmp_fle = random_fle("in")
     with open(tmp_fle, "w") as fout:
         fout.write(iupac)
-
-    p = Popen("opsin " + tmp_fle, shell=True, stdout=PIPE, stderr=PIPE) # nosec
+    p = Popen(
+        f"{OPSIN_CMD} " + str(tmp_fle.resolve()), shell=True, stdout=PIPE, stderr=PIPE
+    )
     smi, err = p.communicate()
     return smi.decode("utf-8").strip(), err.decode("utf-8").strip()
 
@@ -567,10 +568,10 @@ def old_direct_iupac_to_smiles(iupac) -> str:
     :param iupac: The IUPAC string to parse
     :return: The resulting SMILES string.
     """
-    tmp_fle = str(random_fle("in"))
+    tmp_fle = random_fle("in")
     with open(tmp_fle, "w") as fout:
         fout.write(iupac)
-    smi = os.popen("opsin " + tmp_fle).read() # nosec
+    smi = os.popen(f"{OPSIN_CMD} " + str(tmp_fle.resolve())).read()
     return smi
 
 

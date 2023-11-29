@@ -870,3 +870,63 @@ def balance_cod_with_synthetic_negatives(
 
     assert len(df_out) == (1 + k_neg) * len(df)
     return df_out
+
+def add_cv_by_butina_clustering(
+    df,
+    col="smiles",
+    n_cvs=5,
+    random_seed=None,
+    butina_radius=0.4,
+):
+    """
+    >>> df = pd.DataFrame({"smiles": ["CCCPCC","CCCCPCC","COCC","COCCC","c1ccc1C=O","c1c(C)cc1C=O"]})
+    >>> add_cv_by_butina_clustering(df,random_seed=123)#doctest:+NORMALIZE_WHITESPACE
+            smiles  cv
+    0        CCCPCC   0
+    1       CCCCPCC   0
+    2          COCC   1
+    3         COCCC   1
+    4     c1ccc1C=O   2
+    5  c1c(C)cc1C=O   2
+    >>> add_cv_by_butina_clustering(df,random_seed=456,) #doctest:+NORMALIZE_WHITESPACE
+            smiles  cv
+    0        CCCPCC   2
+    1       CCCCPCC   2
+    2          COCC   1
+    3         COCCC   1
+    4     c1ccc1C=O   0
+    5  c1c(C)cc1C=O   0
+    """
+    smiles = list(sorted(set(df[col].tolist())))
+    random.seed(random_seed)
+    random.shuffle(smiles)
+    mols = [Chem.MolFromSmiles(smi) for smi in smiles]
+    # ecfps =[ecfp_fingerprint(mol) for mol in mols]
+    rdkit_gen = rdFingerprintGenerator.GetRDKitFPGenerator(maxPath=5)
+    fingerprints = [rdkit_gen.GetFingerprint(mol) for mol in mols]
+    butina_clusters = simple_butina_clustering(
+        fingerprints,
+        cutoff=butina_radius,
+    )
+
+    splits = clusters_to_split(
+        butina_clusters,
+        split_ratio=[1 / n_cvs for _ in range(n_cvs)],
+        random_seed=random_seed,
+    )
+
+    smi_to_clu = {}
+    for clu_idx, clu in enumerate(butina_clusters):
+        for mol_idx in clu:
+            smi_to_clu[smiles[mol_idx]] = clu_idx
+
+    clu_to_split = {}
+    for split_idx, clusters in enumerate(splits):
+        for cluster in clusters:
+            clu_to_split[cluster] = split_idx
+
+    smi_to_split = {smi: smi_to_clu[smi] for smi in smiles}
+
+    df["cv"] = df[col].map(smi_to_split)
+
+    return df

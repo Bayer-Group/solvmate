@@ -10,6 +10,11 @@ if __name__ == "__main__":
     smi_to_name = {}
     solvs = """
 acetic acid
+propionic acid
+butyric acid
+Propylene Glycol
+acetophenone
+formamide
 acetone
 acetonitrile
 benzene
@@ -105,6 +110,37 @@ octaethylene glycol
 heptaethylene glycol
 decaethylene glycol
 hexaethylene glycol
+1,2-dichloroethane
+dichloromethane
+1-butanol
+1-decanol
+1-hexanol
+1-octanol
+1-pentanol
+1-propanol
+2-butanol
+2-propanol
+4-methyl-2-Pentanone
+acetic Acid
+acetone
+acetophenone
+benzene
+carbon Tetrachloride
+chloroform
+cyclohexane
+dimethyl Formamide
+ethanol
+ethyl Acetate
+ethyl Formate
+formamide
+glycerol
+heptane
+hexane
+isopropyl Myristate
+methanol
+propionic Acid
+propylene Glycol
+trichloromethane
 """
 
     for lne in reversed(solvs.strip().split("\n")):

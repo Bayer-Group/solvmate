@@ -1,5 +1,14 @@
 import argparse
+
+from sklearn.ensemble import (
+    ExtraTreesRegressor,
+    GradientBoostingRegressor,
+    RandomForestRegressor,
+)
+from sklearn.linear_model import Lasso
+from sklearn.neural_network import MLPRegressor
 from solvmate import *
+from solvmate.ranksolv.featurizer import XTBFeaturizer
 
 from solvmate.ranksolv.recommender_factory import RecommenderFactory
 
@@ -27,16 +36,152 @@ if __name__ == "__main__":
         action="store_true",
         required=False,
     )
+    parser.add_argument(
+        "--perform-butina-cv",
+        action="store_true",
+        required=False,
+        dest="perform_butina_cv",
+    )
+    parser.add_argument(
+        "--perform-solvent-cv",
+        action="store_true",
+        required=False,
+        dest="perform_solvent_cv",
+    )
+    parser.add_argument(
+        "--nova-as-ood",
+        action="store_true",
+        required=False,
+        dest="nova_as_ood",
+    )
+    parser.add_argument(
+        "--screen-model-types",
+        action="store_true",
+        required=False,
+        dest="screen_model_types",
+    )
+    parser.add_argument(
+        "--job-name",
+        type=str,
+        help="name of the job",
+        required=False,
+        dest="job_name",
+    )
+    parser.add_argument(
+        "--only-source",
+        type=str,
+        help="filter to only this source",
+        required=False,
+        dest="only_source",
+    )
     args = parser.parse_args()
 
-    assert (
-        args.hyperp != args.finalretrain
-    ), "specify either hyperp or finalretrain (exactly one)"
-
+    assert sum(
+        [args.hyperp, args.screen_model_types, args.finalretrain]
+    ), "specify only one of: --hyperp --screen-model-types --finalretrain"
     if args.hyperp:
         info("hyperparameter search selected")
         rcf = RecommenderFactory()
-        rcf.train_and_eval_recommenders(perform_cv=True, save_recommender=False)
+        rcf.train_and_eval_recommenders(
+            perform_cv=True,
+            perform_butina_cv=args.perform_butina_cv,
+            perform_solvent_cv=args.perform_solvent_cv,
+            nova_as_ood=args.nova_as_ood,
+            save_recommender=False,
+            job_name=args.job_name,
+            only_source=args.only_source,
+        )
+
+    if args.screen_model_types:
+        info("screening model types")
+        rcf = RecommenderFactory(
+            featurizers=[
+                XTBFeaturizer(
+                    phase="train",
+                    pairwise_reduction="diff",
+                    feature_name="xtb",
+                ),
+            ],
+            regs=[
+                Lasso(
+                    alpha=1.0,
+                    fit_intercept=True,
+                    precompute=False,
+                    copy_X=True,
+                    max_iter=1000,
+                    tol=0.0001,
+                    warm_start=False,
+                    positive=False,
+                    random_state=None,
+                    selection="cyclic",
+                ),
+                ExtraTreesRegressor(
+                    n_jobs=N_JOBS,
+                    n_estimators=100,
+                ),
+                RandomForestRegressor(
+                    n_jobs=N_JOBS,
+                    n_estimators=100,
+                ),
+                MLPRegressor(
+                    hidden_layer_sizes=(100,),
+                    activation="relu",
+                    solver="adam",
+                    alpha=0.0001,
+                    batch_size="auto",
+                    learning_rate="constant",
+                    learning_rate_init=0.001,
+                    power_t=0.5,
+                    max_iter=200,
+                    shuffle=True,
+                    random_state=None,
+                    tol=0.0001,
+                    verbose=False,
+                    warm_start=False,
+                    momentum=0.9,
+                    nesterovs_momentum=True,
+                    early_stopping=False,
+                    validation_fraction=0.1,
+                    beta_1=0.9,
+                    beta_2=0.999,
+                    epsilon=1e-08,
+                    n_iter_no_change=10,
+                    max_fun=15000,
+                ),
+                GradientBoostingRegressor(
+                    loss="squared_error",
+                    learning_rate=0.1,
+                    n_estimators=100,
+                    subsample=1.0,
+                    criterion="friedman_mse",
+                    min_samples_split=2,
+                    min_samples_leaf=1,
+                    min_weight_fraction_leaf=0.0,
+                    max_depth=3,
+                    min_impurity_decrease=0.0,
+                    init=None,
+                    random_state=None,
+                    max_features=None,
+                    alpha=0.9,
+                    verbose=0,
+                    max_leaf_nodes=None,
+                    warm_start=False,
+                    validation_fraction=0.1,
+                    n_iter_no_change=None,
+                    tol=0.0001,
+                    ccp_alpha=0.0,
+                ),
+            ],
+        )
+        rcf.train_and_eval_recommenders(
+            perform_cv=True,
+            perform_butina_cv=args.perform_butina_cv,
+            perform_solvent_cv=args.perform_solvent_cv,
+            nova_as_ood=args.nova_as_ood,
+            save_recommender=False,
+            job_name=args.job_name,
+            only_source=args.only_source,
+        )
 
     if args.finalretrain:
         info("final retrain selected")
@@ -44,11 +189,20 @@ if __name__ == "__main__":
             abs_strat_range=[
                 "mean",
             ],
-            featurizations_range=[
-                "ab_Gsolv_cat_norm_partit_solv_solu_ecfp",
+            featurizers=[
+                XTBFeaturizer(
+                    phase="train",
+                    pairwise_reduction="diff",
+                    feature_name="xtb",
+                ),
             ],
         )
         rcf.train_and_eval_recommenders(
             perform_cv=True,
+            perform_butina_cv=False,
+            perform_solvent_cv=False,
+            nova_as_ood=False,
             save_recommender=True,
+            job_name=str(args.job_name),
+            only_source=args.only_source,
         )

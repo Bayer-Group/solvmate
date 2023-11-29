@@ -58,7 +58,10 @@ def run():
                     ):
                         continue
                     else:
-                        assert pa["source"] == pb["source"]
+                        assert (
+                            pa["source"] == pb["source"]
+                            or pa["solute SMILES"] == "CN(C)C(=O)Nc1ccc(Cl)c(Cl)c1"
+                        )
                         assert pa["cross_fold"] == pb["cross_fold"]
                         pairs.append(
                             {

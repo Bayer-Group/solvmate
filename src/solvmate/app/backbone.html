@@ -89,6 +89,11 @@
       <div class="w3-section">
         <input class="w3-input" type="text" id="smiInput" required>
       </div>
+      <h4>File Upload:</h4>
+      <input type="file" multiple="" id="fileUploadInput" name="files" onchange="handleFileUploadButtonClick();">
+      <p style="display: inline; font-weight: bold; font-style: italic;">&larr; Drag-n-Drop Here! </p>
+      <br>
+      <b style="font-size: smaller;">.cdxml,.cdx,.mol,.car,.smi,.cml,.mdl,...</b>
     </div>
     <!-- The following mol-image is no longer needed as we already have a mol editor showing a mol -->
     <!-- In case the mol editor ever gets removed, comment this in again ...-->
@@ -116,6 +121,8 @@
       <h2>Select solvent set to rank</h2>
       <div id="solventSelectionDiv">
       </div>
+      <p style="display: inline; font-weight: bold; font-style: italic;">&uarr; Try out different solvent sets or add
+        your own! </p>
     </div>
 
     <div class="w3-padding w3-third w3-white" style="min-height:400px">

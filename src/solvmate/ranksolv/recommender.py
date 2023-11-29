@@ -1,6 +1,6 @@
 from sklearn.inspection import permutation_importance
 from solvmate import *
-from solvmate.ranksolv.featurizer import AbstractFeaturizer
+from solvmate.ranksolv.featurizer import AbstractFeaturizer, PriorFeaturizer
 
 try:
     from solvmate.pair_rank import pair_rank
@@ -201,13 +201,29 @@ class Recommender:
         return pairs
 
     def _featurize_pairs(self, pairs: pd.DataFrame):
-        pairs["X"] = list(
-            self.featurizer.run_pairs(
-                compounds=pairs["solute SMILES"].tolist(),
-                solvents_a=pairs["solvent SMILES a"].tolist(),
-                solvents_b=pairs["solvent SMILES b"].tolist(),
+
+        if isinstance(self.featurizer, PriorFeaturizer):
+            # The prior featurizer intends to only encode the solvent side:
+            pairs["X"] = list(
+                np.hstack(
+                    [
+                        self.featurizer.run_single(
+                            pairs["solvent SMILES a"].tolist()
+                        ).reshape(-1, 1),
+                        self.featurizer.run_single(
+                            pairs["solvent SMILES b"].tolist()
+                        ).reshape(-1, 1),
+                    ]
+                )
             )
-        )
+        else:
+            pairs["X"] = list(
+                self.featurizer.run_pairs(
+                    compounds=pairs["solute SMILES"].tolist(),
+                    solvents_a=pairs["solvent SMILES a"].tolist(),
+                    solvents_b=pairs["solvent SMILES b"].tolist(),
+                )
+            )
 
     def recommend_smiles(self, smiles: list[str]):
         assert hasattr(

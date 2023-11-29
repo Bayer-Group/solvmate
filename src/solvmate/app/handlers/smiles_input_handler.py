@@ -42,6 +42,8 @@ class SmilesInputHandler(BaseHandler):
         try:
             req = json.loads(self.request.body)
             req_smi = req["smiles"]
+
+            req_smi = Chem.CanonSmiles(req_smi)
             mol = Chem.MolFromSmiles(req_smi)
             img = mol_to_image(mol, width=IMAGE_DIM, height=IMAGE_DIM)
 

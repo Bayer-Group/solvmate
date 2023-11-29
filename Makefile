@@ -1,8 +1,9 @@
+
 run:
 	python src/solvmate/app/app.py 
 
 open:
-	open "http://127.0.0.1:8890"
+	open "https://127.0.0.1:8890"
 
 all_fast:
 	make clean 
@@ -61,3 +62,12 @@ delete_solvent_selection_db:
 cert_https:
 	cd cert && openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 365 -nodes
 
+screen_model_types:
+	python scripts/train_recommender.py --hyperp --screen-model-types --job-name screen_model_types
+
+
+docker_build:
+	docker build --build-arg HTTP_PROXY=$$HTTP_PROXY --build-arg HTTPS_PROXY=$$HTTPS_PROXY --build-arg http_proxy=$$http_proxy --build-arg https_proxy=$$https_proxy -t solvmate:latest .
+
+docker_run:
+	(docker rm "/solvmate-server" || true) && docker run --name solvmate-server -p 8890:8890 solvmate:latest

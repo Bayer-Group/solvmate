@@ -36,6 +36,9 @@ class PlotDisplay:
             cents.append(cent)
 
         df["solv_cent"] = df["solvent"].map(dict(zip(solvs, cents)))
+        df["solv_cent"] = df["solv_cent"].apply(lambda x: -x)
+        max_pos_idx = max(df["pos_index"].tolist())
+        df["pos_index"] = df["pos_index"].apply(lambda x: max_pos_idx - x)
         df = df.sort_values("solv_cent")
 
         sns.boxplot(
@@ -133,14 +136,9 @@ class JackKnifeRecommender:
         try:
             preds_all_rcs = np.array(preds_all_rcs).transpose(1, 0, 2)
         except:
-            try:
-                preds_all_rcs = np.array(
-                    ragged_transpose_102(preds_all_rcs),
-                )
-            except:
-                import pdb
-
-                pdb.set_trace()
+            preds_all_rcs = np.array(
+                ragged_transpose_102(preds_all_rcs),
+            )
         return preds_all_rcs
 
     def recommend_smiles_spread(self, smiles: list[str]):

@@ -44,7 +44,7 @@ class _KNNRecommenderSolub:
             [
                 col
                 for col in xtb_features_piv.columns
-                if "(" in col and not "__" in col and "elec" not in col.lower()
+                if "(" in col and not "__" in col  # and "elec" not in col.lower()
             ]
         )
         df["X"] = list(df[features_c].values)
@@ -74,9 +74,6 @@ class _KNNRecommenderSolub:
         vec = dfp["X"].iloc[0]  # same for all
 
         vec_diff = np.vstack(df["X"]) - vec
-        # TODO: use commented out line above instead of this:
-        # vec = vec[0:197]  # hack for now to make it work ...
-        # vec_diff = np.random.uniform(-100, 100, (len(df), 197))
 
         if self.dist_type == "l2":
             df["dist"] = np.linalg.norm(vec_diff, axis=1)

@@ -1,7 +1,16 @@
+import shutil
+from sklearn.discriminant_analysis import StandardScaler
 from sklearn.impute import SimpleImputer
 from solvmate import *
-from solvmate import xtb_solv
+from solvmate import np, xtb_solv
 
+class _DoNothingScaler():
+
+    def fit_transform(self, X):
+        return X
+
+    def transform(self, X):
+        return X
 
 class AbstractFeaturizer:
     def __init__(
@@ -17,6 +26,15 @@ class AbstractFeaturizer:
         self.pairwise_reduction = pairwise_reduction
         self.feature_name = feature_name
         self.imputer = SimpleImputer()
+        self.scaler = _DoNothingScaler()#StandardScaler()
+
+    @property
+    def phase(self):
+        return self._phase
+
+    @phase.setter
+    def phase(self, value):
+        self._phase = value
 
     def __str__(self):
         return f"{self.__class__}: feature_name={self.feature_name} pairwise_reduction={self.pairwise_reduction}"
@@ -68,6 +86,95 @@ class AbstractFeaturizer:
         raise NotImplemented()
 
 
+class ECFPFeaturizer(AbstractFeaturizer):
+    def run_single(self, smiles: list[str]) -> np.array:
+        return np.vstack([self.ecfp_fingerprint_else_none(smi) for smi in smiles])
+
+    def ecfp_fingerprint_else_none(self, smi):
+        try:
+            mol = Chem.MolFromSmiles(smi)
+            return ecfp_fingerprint(mol, n_bits=2048)
+        except:
+            return np.zeros((2048,))
+
+
+class CountECFPFeaturizer(AbstractFeaturizer):
+    def run_single(self, smiles: list[str]) -> np.array:
+        return np.vstack([self.ecfp_fingerprint_else_none(smi) for smi in smiles])
+
+    def ecfp_fingerprint_else_none(self, smi):
+        try:
+            mol = Chem.MolFromSmiles(smi)
+            return ecfp_count_fingerprint(
+                mol,
+            )
+        except:
+            return np.zeros((2048,))
+
+
+class RandFeaturizer(AbstractFeaturizer):
+    def run_single(self, smiles: list[str]) -> np.array:
+        return np.array([random.random() for _ in smiles])
+
+
+class PriorFeaturizer(AbstractFeaturizer):
+    @staticmethod
+    def sha1_hash(s: str) -> str:
+        hash_object = hashlib.sha1(s.encode("utf8"))
+        return hash_object.hexdigest()
+
+    def run_single(self, smiles: list[str]) -> np.array:
+        return np.array([int(self.sha1_hash(smi), base=16) % 1024 for smi in smiles])
+
+    def run_pairs(
+        self, compounds: list[str], solvents_a: list[str], solvents_b: list[str]
+    ) -> np.array:
+        # vec_a = np.vstack([self.ecfp_fingerprint_else_none(s) for s in solvents_a])
+        # vec_b = np.vstack([self.ecfp_fingerprint_else_none(s) for s in solvents_b])
+        # return np.hstack([vec_a, vec_b])
+        vec_a = np.array(
+            [int(self.sha1_hash(smi), base=16) % 1024 for smi in solvents_a]
+        ).reshape(-1, 1)
+        vec_b = np.array(
+            [int(self.sha1_hash(smi), base=16) % 1024 for smi in solvents_b]
+        ).reshape(-1, 1)
+        return np.hstack([vec_a, vec_b])
+
+    def ecfp_fingerprint_else_none(self, smi):
+        try:
+            mol = Chem.MolFromSmiles(smi)
+            return ecfp_fingerprint(mol, n_bits=2048)
+        except:
+            return np.zeros((2048,))
+
+
+class ECFPSolventOnlyFeaturizer(AbstractFeaturizer):
+    @staticmethod
+    def sha1_hash(s: str) -> str:
+        hash_object = hashlib.sha1(s.encode("utf8"))
+        return hash_object.hexdigest()
+
+    def run_single(self, smiles: list[str]) -> np.array:
+        return np.array([int(self.sha1_hash(smi), base=16) % 1024 for smi in smiles])
+
+    def run_pairs(
+        self, compounds: list[str], solvents_a: list[str], solvents_b: list[str]
+    ) -> np.array:
+        vec_a = np.array(
+            [int(self.sha1_hash(smi), base=16) % 1024 for smi in solvents_a]
+        ).reshape(-1, 1)
+        vec_a = np.vstack([self.ecfp_fingerprint_else_none(smi) for smi in solvents_a])
+        vec_b = np.vstack([self.ecfp_fingerprint_else_none(smi) for smi in solvents_b])
+        return np.hstack([vec_a, vec_b])
+
+    def ecfp_fingerprint_else_none(self, smi):
+        try:
+            mol = Chem.MolFromSmiles(smi)
+            return ecfp_fingerprint(mol, n_bits=2048)
+        except:
+            return np.zeros((2048,))
+
+
 class XTBFeaturizer(AbstractFeaturizer):
     """
     Provides a convenient interface to XTB features that can be readily fed
@@ -115,11 +222,33 @@ class XTBFeaturizer(AbstractFeaturizer):
             return self._db_storage_dict[phase]
 
         if phase == "train":
-            return DATA_DIR / "xtb_features.db"
+            db_fle_data_dir = DATA_DIR / "xtb_features.db"
         elif phase == "predict":
-            return DATA_DIR / "xtb_features_predict.db"
+            db_fle_data_dir = DATA_DIR / "xtb_features_predict.db"
         else:
             assert False, f"unknown phase {phase}"
+
+        mem_dir = Path("/dev/shm")
+        if mem_dir.exists() and os.environ.get("SOLVMATE_USE_DEV_SHM_FOR_DB"):
+            # Fix for the dgxs.
+            # The /home file system is so slow, that we rather move
+            # the database to a saner location.
+            if phase == "train":
+                db_fle_mem_dir = mem_dir / "xtb_features.db"
+            elif phase == "predict":
+                db_fle_mem_dir = mem_dir / "xtb_features_predict.db"
+            else:
+                assert False, f"unknown phase {phase}"
+            if not db_fle_mem_dir.exists():
+                warn("copying database file to in-memory directory. This may take some time...")
+                try:
+                    shutil.copy(db_fle_data_dir,db_fle_mem_dir.with_suffix(".dbtmp"))
+                    shutil.move(db_fle_mem_dir.with_suffix(".dbtmp"), db_fle_mem_dir.with_suffix(".db"))
+                except: # file might not exist yet
+                    pass
+            return db_fle_mem_dir
+        else:
+            return db_fle_data_dir
 
     def run_single(self, smiles: list[str]) -> np.array:
         db_file = self._db_storage_for_phase(self.phase)
@@ -138,6 +267,8 @@ class XTBFeaturizer(AbstractFeaturizer):
         df_xtb: pd.DataFrame,
         smiles: list[str],
     ) -> np.array:
+        if "index" in df_xtb.columns:
+            df_xtb = df_xtb.drop(columns=["index"]) # caused by some pandas manipulations
         xtb_features_piv = df_xtb.drop_duplicates(["smiles", "solvent"]).pivot(
             index="smiles",
             columns="solvent",
@@ -173,8 +304,10 @@ class XTBFeaturizer(AbstractFeaturizer):
         feat_vals = xtb_features_piv[feat_cols].values
         if self.phase == "train":
             feat_vals = self.imputer.fit_transform(feat_vals)
+            feat_vals = self.scaler.fit_transform(feat_vals)
         elif self.phase == "predict":
             feat_vals = self.imputer.transform(feat_vals)
+            feat_vals = self.scaler.transform(feat_vals)
         else:
             assert False
 
@@ -201,24 +334,18 @@ class CosmoRSFeaturizer(AbstractFeaturizer):
         phase: str,
         pairwise_reduction: str,
         feature_name: str,
-        skip_calculations=False,
+        skip_calculations=True,
     ) -> None:
         super().__init__(phase, pairwise_reduction, feature_name)
         self.skip_calculautions = skip_calculations
 
-    def run_pairs(
-        self, compounds: list[str], solvents_a: list[str], solvents_b: list[str]
-    ) -> np.array:
-        smiles_set = list(set(compounds + solvents_a + solvents_b))
+
+    def run_single(self, smiles: list[str]) -> np.array:
+        smiles_set = list(set(smiles))
 
         names, charges = [], []
         for smi in smiles_set:
-            try:
-                name = smiles_to_id(smi)
-            except:
-                import pdb
-
-                pdb.set_trace()
+            name = smiles_to_id(smi)
             charge = smiles_to_charge(smi)
             names.append(name)
             charges.append(charge)
@@ -299,10 +426,14 @@ class CosmoRSFeaturizer(AbstractFeaturizer):
 
         if self.phase == "train":
             X_a = self.imputer.fit_transform(X_a)
-            X_b = self.imputer.fit_transform(X_b)
+            X_b = self.imputer.transform(X_b)
+            X_a = self.scaler.fit_transform(X_a)
+            X_b = self.scaler.transform(X_b)
         elif self.phase == "predict":
             X_a = self.imputer.transform(X_a)
             X_b = self.imputer.transform(X_b)
+            X_a = self.scaler.transform(X_a)
+            X_b = self.scaler.transform(X_b)
         else:
             assert False, f"unknown phase: {self.phase}"
 
@@ -317,3 +448,153 @@ class CosmoRSFeaturizer(AbstractFeaturizer):
             )
         else:
             assert False
+
+
+    def run_pairs(
+        self, compounds: list[str], solvents_a: list[str], solvents_b: list[str]
+    ) -> np.array:
+        smiles_set = list(set(compounds + solvents_a + solvents_b))
+
+        names, charges = [], []
+        for smi in smiles_set:
+            name = smiles_to_id(smi)
+            charge = smiles_to_charge(smi)
+            names.append(name)
+            charges.append(charge)
+
+        assert len(smiles_set) == len(charges)
+        assert len(smiles_set) == len(names)
+
+        if self.skip_calculautions:
+            print("skipping COSMO calculations!")
+        else:
+            print("running COSMO calculations...")
+            run_cosmo_calculations(
+                smiles_list=smiles_set,
+                names_list=names,
+                charges_list=charges,
+                outputs_dir=CM_DATA_DIR,
+                n_cores_inner=1,
+                n_cores_outer=8,
+            )
+            print("... finished running COSMO calculations.")
+
+        cosmo_fle_solvents_a = [
+            id_to_cosmo_file_path(smiles_to_id(smi)) for smi in solvents_a
+        ]
+        cosmo_fle_solvents_b = [
+            id_to_cosmo_file_path(smiles_to_id(smi)) for smi in solvents_b
+        ]
+        cosmo_fle_solutes = [
+            id_to_cosmo_file_path(smiles_to_id(smi)) for smi in compounds
+        ]
+
+        print("running COSMO-RS calculations ...")
+        X_a = [
+            np.array(
+                make_cosmors_features(
+                    fle_solvent=fle_solvent,
+                    fle_solute=fle_solute,
+                    refst="pure_component",
+                    reduction="id",
+                )
+            )
+            for fle_solvent, fle_solute in zip(cosmo_fle_solvents_a, cosmo_fle_solutes)
+        ]
+
+        X_b = [
+            np.array(
+                make_cosmors_features(
+                    fle_solvent=fle_solvent,
+                    fle_solute=fle_solute,
+                    refst="pure_component",
+                    reduction="id",
+                )
+            )
+            for fle_solvent, fle_solute in zip(cosmo_fle_solvents_b, cosmo_fle_solutes)
+        ]
+
+        shape = list(
+            {
+                tuple(row.shape)
+                for mat in [X_a, X_b]
+                for row in mat
+                if row is not None and len(row.shape)
+            }
+        )
+        assert len(shape) == 1, f"expected shapes to be unique but found: {shape}"
+        success_shape = shape[0]
+        X_a = [
+            np.full(success_shape, np.nan) if row is None or not len(row.shape) else row
+            for row in X_a
+        ]
+        X_a = np.vstack(X_a)
+        X_b = [
+            np.full(success_shape, np.nan) if row is None or not len(row.shape) else row
+            for row in X_b
+        ]
+        X_b = np.vstack(X_b)
+        print("... finished running COSMO-RS calculations.")
+
+        if self.phase == "train":
+            X_a = self.imputer.fit_transform(X_a)
+            X_b = self.imputer.transform(X_b)
+            X_a = self.scaler.fit_transform(X_a)
+            X_b = self.scaler.transform(X_b)
+        elif self.phase == "predict":
+            X_a = self.imputer.transform(X_a)
+            X_b = self.imputer.transform(X_b)
+            X_a = self.scaler.transform(X_a)
+            X_b = self.scaler.transform(X_b)
+        else:
+            assert False, f"unknown phase: {self.phase}"
+
+        if self.pairwise_reduction == "diff":
+            return X_b - X_a
+        elif self.pairwise_reduction == "concat":
+            return np.hstack(
+                [
+                    X_a,
+                    X_b,
+                ]
+            )
+        else:
+            assert False
+
+
+class HybridFeaturizer(AbstractFeaturizer):
+    def __init__(self, phase: str, pairwise_reduction: str, feature_name: str,
+                 xtb_featurizer:XTBFeaturizer,
+                 ecfp_featurizer:CountECFPFeaturizer,
+                 ) -> None:
+        self.xtb_featurizer = xtb_featurizer
+        self.ecfp_featurizer = ecfp_featurizer
+        super().__init__(phase, pairwise_reduction, feature_name)
+
+    @property
+    def phase(self):
+        assert self.xtb_featurizer.phase == self._phase
+        return self._phase
+
+    @phase.setter
+    def phase(self, value):
+        self._phase = value
+        self.xtb_featurizer.phase = value
+        self.ecfp_featurizer.phase = value
+
+    def run_single(self, smiles: list[str]) -> np.array:
+        return np.hstack(
+            [
+                self.xtb_featurizer.run_single(smiles),
+                self.ecfp_featurizer.run_single(smiles),
+            ]
+        )
+        
+    def run_pairs(self, compounds: list[str], solvents_a: list[str], solvents_b: list[str]) -> np.array:
+        return np.hstack(
+            [
+                self.xtb_featurizer.run_pairs(compounds=compounds,solvents_a=solvents_a,solvents_b=solvents_b),
+                self.ecfp_featurizer.run_pairs(compounds=compounds,solvents_a=solvents_a,solvents_b=solvents_b),
+            ]
+        )
+    

@@ -1,6 +1,3 @@
-
-**Attention: We are currently working on making easily accessible pip/conda packages, and will update the install guide once that is completed!!!**
-
 # Install XTB
 For M1 Macs:
 Install using homebrew as described here: https://github.com/grimme-lab/homebrew-qc
