@@ -1,0 +1,11 @@
+.git/
+data/
+!data/solvent_selection.db
+!data/20150430SolubilitiesSum.xlsx
+!data/novartis_dataset_c7ce00738h6.csv
+!data/smi_to_name.json
+!data/xtb_features__public_domain.db 
+!data/training_data__public_domain.db 
+cert/
+archive/
+figures/
