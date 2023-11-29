@@ -48,7 +48,7 @@ RUN pip install scikit-learn
 RUN pip install rdkit-pypi
 RUN pip list
 
-RUN python /solvmate/src/scripts/download_models.py
+RUN python /solvmate/scripts/download_models.py
 
 ENV PYTHONPATH="/solvmate/src:${PYTHONPATH}"
 ENTRYPOINT [ "python", "/solvmate/src/solvmate/app/app.py" ]
