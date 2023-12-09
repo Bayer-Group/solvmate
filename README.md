@@ -1,4 +1,6 @@
 ![logo](logo.png =50x50)
+![logo](logo.png =50x50)
+<img src="/logo.png" width="50" height="50">
 
 # Solvmate 
 A practical ML framework for the recommendation of organic solvents
