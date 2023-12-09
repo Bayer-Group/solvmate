@@ -1,8 +1,8 @@
-<img src="/logo.png" width="50" height="50">
+<img src="/logo.png" width="200">
 
 # Solvmate 
 
-A practical ML framework for the recommendation of organic solvents
+A practical web application for the recommendation of organic solvents
 based on the paper
 *Solvmate - A hybrid physical/ML approach to solvent recommendation leveraging a rank-based problem framing* (**citation link will follow**).
 
