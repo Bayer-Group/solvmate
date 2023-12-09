@@ -1,13 +1,12 @@
-![logo](logo.png =50x50)
-![logo](logo.png =50x50)
-<img src="/logo.png" width="50" height="50">
 
-# Solvmate 
+
+
+# Solvmate <img src="/logo.png" width="50" height="50">
 A practical ML framework for the recommendation of organic solvents
 based on the paper
 *Solvmate - A hybrid physical/ML approach to solvent recommendation leveraging a rank-based problem framing* (**citation link will follow**).
 
-![schema_webapp](/figures/figure_webapp_2.svg)
+<img src="/figures/figure_webap_2.svg" width="300" height="300">
 
 Given a compound as SMILES, and set of solvents as IUPAC names,
 the solvents are recommended in increasing solubility.
