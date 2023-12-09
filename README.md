@@ -15,7 +15,7 @@ the solvents are recommended in increasing solubility.
 
 ## Usage example:
 The following animation shows a simple step-by-step guide (**domain not active (yet)**):
-![usage](/figures/usage_animation.gif)
+<img src="/figures/usage_animation.gif" width="300" height="300">
 
 
 
