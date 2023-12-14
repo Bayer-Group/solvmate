@@ -18,6 +18,10 @@ The following animation shows a simple step-by-step guide (**domain not active (
 
 <img src="/figures/usage_animation.gif" width="300">
 
+## Default credentials
+The default credentials are user: "user", password: "solvmate"
+
+Have a look in the auth.py module how additional users can be configured.
 
 
 # References
