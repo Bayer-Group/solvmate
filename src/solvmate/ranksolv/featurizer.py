@@ -341,7 +341,10 @@ class CosmoRSFeaturizer(AbstractFeaturizer):
 
 
     def run_single(self, smiles: list[str]) -> np.array:
-        smiles_set = list(set(smiles))
+        raise NotImplemented()
+
+    def run_solute_solvent(self, compounds, solvents):
+        smiles_set = list(set(compounds))
 
         names, charges = [], []
         for smi in smiles_set:
@@ -367,18 +370,15 @@ class CosmoRSFeaturizer(AbstractFeaturizer):
             )
             print("... finished running COSMO calculations.")
 
-        cosmo_fle_solvents_a = [
-            id_to_cosmo_file_path(smiles_to_id(smi)) for smi in solvents_a
-        ]
-        cosmo_fle_solvents_b = [
-            id_to_cosmo_file_path(smiles_to_id(smi)) for smi in solvents_b
+        cosmo_fle_solvents = [
+            id_to_cosmo_file_path(smiles_to_id(smi)) for smi in solvents
         ]
         cosmo_fle_solutes = [
             id_to_cosmo_file_path(smiles_to_id(smi)) for smi in compounds
         ]
 
         print("running COSMO-RS calculations ...")
-        X_a = [
+        X = [
             np.array(
                 make_cosmors_features(
                     fle_solvent=fle_solvent,
@@ -387,67 +387,35 @@ class CosmoRSFeaturizer(AbstractFeaturizer):
                     reduction="id",
                 )
             )
-            for fle_solvent, fle_solute in zip(cosmo_fle_solvents_a, cosmo_fle_solutes)
-        ]
-
-        X_b = [
-            np.array(
-                make_cosmors_features(
-                    fle_solvent=fle_solvent,
-                    fle_solute=fle_solute,
-                    refst="pure_component",
-                    reduction="id",
-                )
-            )
-            for fle_solvent, fle_solute in zip(cosmo_fle_solvents_b, cosmo_fle_solutes)
+            for fle_solvent, fle_solute in zip(cosmo_fle_solvents, cosmo_fle_solutes)
         ]
 
         shape = list(
             {
                 tuple(row.shape)
-                for mat in [X_a, X_b]
-                for row in mat
+                for row in X
                 if row is not None and len(row.shape)
             }
         )
         assert len(shape) == 1, f"expected shapes to be unique but found: {shape}"
         success_shape = shape[0]
-        X_a = [
+        X = [
             np.full(success_shape, np.nan) if row is None or not len(row.shape) else row
-            for row in X_a
+            for row in X
         ]
-        X_a = np.vstack(X_a)
-        X_b = [
-            np.full(success_shape, np.nan) if row is None or not len(row.shape) else row
-            for row in X_b
-        ]
-        X_b = np.vstack(X_b)
+        X = np.vstack(X)
         print("... finished running COSMO-RS calculations.")
 
         if self.phase == "train":
-            X_a = self.imputer.fit_transform(X_a)
-            X_b = self.imputer.transform(X_b)
-            X_a = self.scaler.fit_transform(X_a)
-            X_b = self.scaler.transform(X_b)
+            X = self.imputer.fit_transform(X)
+            X = self.scaler.fit_transform(X)
         elif self.phase == "predict":
-            X_a = self.imputer.transform(X_a)
-            X_b = self.imputer.transform(X_b)
-            X_a = self.scaler.transform(X_a)
-            X_b = self.scaler.transform(X_b)
+            X = self.imputer.transform(X)
+            X = self.scaler.transform(X)
         else:
             assert False, f"unknown phase: {self.phase}"
 
-        if self.pairwise_reduction == "diff":
-            return X_b - X_a
-        elif self.pairwise_reduction == "concat":
-            return np.hstack(
-                [
-                    X_a,
-                    X_b,
-                ]
-            )
-        else:
-            assert False
+        return X
 
 
     def run_pairs(
@@ -598,3 +566,89 @@ class HybridFeaturizer(AbstractFeaturizer):
             ]
         )
     
+
+import json
+import requests
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+class CDDDRequest:
+    def __init__(self, host=None, port=8892):
+        if host is None:
+            host = os.environ.get("CDDD_URL")
+            if host is None:
+                raise Exception("host not set. consider setting the CDDD_URL environment param!")
+
+        self.host = host
+        self.port = port
+        self.headers = {'content-type': 'application/json'}
+
+    def smiles_to_cddd(self, smiles, preprocess=True):
+        url = "{}:{}/smiles_to_cddd/".format(self.host, self.port)
+        req = json.dumps({"smiles": smiles, "preprocess": preprocess})
+        response = requests.post(url, data=req, headers=self.headers, verify=False)
+        return json.loads(response.content.decode("utf-8"))
+        # return response
+
+    def cddd_to_smiles(self, embedding):
+        url = "{}:{}/cddd_to_smiles/".format(self.host, self.port)
+        req = json.dumps({"cddd": embedding})
+        response = requests.post(url, data=req, headers=self.headers, verify=False)
+        return json.loads(response.content.decode("utf-8"))
+    
+    
+
+_CDDD_CACHE_FLE = DATA_DIR / "_cddd_cache.pkl"
+if _CDDD_CACHE_FLE.exists():
+    _CDDD_CACHE = joblib.load(_CDDD_CACHE_FLE)
+else:
+    _CDDD_CACHE = {}
+
+def cddd_descriptors(smis:'list[str]'):
+    """
+    Calculates the CDDD descriptors for the given smiles smi
+
+    >>> cddd_descriptors(['CCCPCCCC','CCCOCCCC','CCCPCCCC'])
+    """
+
+    # allow users to specify molecules for convenience as well
+    if smis and not isinstance(smis[0],str):
+        try:
+            smis = [Chem.MolToSmiles(mol) for mol in smis]
+        except:
+            pass
+
+    smis_calc = [smi for smi in smis if smi not in _CDDD_CACHE]
+    cddds = []
+
+    batch_size = 2000
+    for i in range(0, len(smis_calc), batch_size): # send batches of data
+        if i+batch_size-1 <= len(smis_calc):
+            last = i+batch_size
+        else:
+            last = len(smis_calc)
+        mols_subset = smis_calc[i:last]
+        CR = CDDDRequest()
+        cddds_subset = np.array(CR.smiles_to_cddd(mols_subset))
+        if i == 0:
+            cddds = cddds_subset.copy()
+        else:
+            cddds = np.concatenate((cddds, cddds_subset), axis=0)
+
+    assert len(smis_calc) == len(cddds)
+    for smi,cddd in zip(smis_calc,cddds):
+        _CDDD_CACHE[smi] = cddd 
+
+    joblib.dump(_CDDD_CACHE,_CDDD_CACHE_FLE)
+    return np.vstack([_CDDD_CACHE[smi] for smi in smis])
+
+
+class CDDDFeaturizer(AbstractFeaturizer):
+
+    def __init__(self, phase: str, pairwise_reduction: str, feature_name: str) -> None:
+        super().__init__(phase, pairwise_reduction, feature_name)
+
+    def run_single(self, smiles: list[str]) -> np.array:
+        return cddd_descriptors(smiles)
+        

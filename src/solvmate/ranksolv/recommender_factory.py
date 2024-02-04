@@ -1,6 +1,7 @@
 from solvmate import *
 from solvmate.ranksolv import ood
 from solvmate.ranksolv.featurizer import (
+    CDDDFeaturizer,
     CountECFPFeaturizer,
     ECFPFeaturizer,
     ECFPSolventOnlyFeaturizer,
@@ -137,11 +138,11 @@ class RecommenderFactory:
 
         if featurizers is None:
             featurizers = [
-                # CosmoRSFeaturizer(
-                #    phase="train",
-                #    pairwise_reduction="concat",
-                #    feature_name="cosmors",
-                # ),
+                CosmoRSFeaturizer(
+                    phase="train",
+                    pairwise_reduction="concat",
+                    feature_name="cosmors",
+                ),
                 HybridFeaturizer(
                     phase="train",
                     pairwise_reduction="diff",
@@ -184,6 +185,16 @@ class RecommenderFactory:
                     phase="train", pairwise_reduction="diff", feature_name="ecfp_bit"
                 ),
             ]
+        # TODO: hack to make it faster:
+        featurizers = [
+                CDDDFeaturizer(feature_name="cddd",phase="train",pairwise_reduction="concat"),
+                XTBFeaturizer(
+                    phase="train",
+                    pairwise_reduction="diff",
+                    feature_name="xtb",
+                ),
+        ]
+
         self.featurizers = featurizers
 
         if abs_strat_range is None:
