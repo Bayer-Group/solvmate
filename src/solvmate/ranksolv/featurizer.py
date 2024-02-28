@@ -1,4 +1,5 @@
 import shutil
+from numpy.core.multiarray import array as array
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.impute import SimpleImputer
 from solvmate import *
@@ -652,3 +653,15 @@ class CDDDFeaturizer(AbstractFeaturizer):
     def run_single(self, smiles: list[str]) -> np.array:
         return cddd_descriptors(smiles)
         
+
+class CombinedFeaturizer(AbstractFeaturizer):
+    def __init__(self, featurizers, phase: str, pairwise_reduction: str, feature_name: str) -> None:
+        super().__init__(phase, pairwise_reduction, feature_name)
+        self.featurizers = featurizers
+
+    def run_single(self, smiles: list[str]) -> np.array:
+        X = []
+        for featurizer in self.featurizers:
+            X.append(featurizer.run_single(smiles))
+        return np.hstack(X)
+

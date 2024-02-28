@@ -2,6 +2,7 @@ from solvmate import *
 from solvmate.ranksolv import ood
 from solvmate.ranksolv.featurizer import (
     CDDDFeaturizer,
+    CombinedFeaturizer,
     CountECFPFeaturizer,
     ECFPFeaturizer,
     ECFPSolventOnlyFeaturizer,
@@ -188,10 +189,27 @@ class RecommenderFactory:
         # TODO: hack to make it faster:
         featurizers = [
                 CDDDFeaturizer(feature_name="cddd",phase="train",pairwise_reduction="concat"),
+                CDDDFeaturizer(feature_name="cddd",phase="train",pairwise_reduction="diff"),
+                XTBFeaturizer(
+                    phase="train",
+                    pairwise_reduction="concat",
+                    feature_name="xtb",
+                ),
                 XTBFeaturizer(
                     phase="train",
                     pairwise_reduction="diff",
                     feature_name="xtb",
+                ),
+                CombinedFeaturizer(
+                    featurizers=[
+                    CDDDFeaturizer(feature_name="cddd",phase="train",pairwise_reduction="concat"),
+                    XTBFeaturizer(
+                        phase="train",
+                        pairwise_reduction="concat",
+                        feature_name="xtb",
+                    ),
+                    ],
+                    phase="train", pairwise_reduction="concat", feature_name="xtb_cddd_combined",
                 ),
         ]
 
