@@ -71,3 +71,7 @@ docker_build:
 
 docker_run:
 	(docker rm "/solvmate-server" || true) && docker run --name solvmate-server -p 8890:8890 solvmate:latest
+
+
+paper:
+	python scripts/train_recommender.py --paper

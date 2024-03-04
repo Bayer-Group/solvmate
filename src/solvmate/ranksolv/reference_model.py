@@ -60,7 +60,6 @@ class AbsoluteRecommender:
 
         if "CosmoRSFeaturizer" in str(self.featurizer.__class__.__name__):
             # CosmoRS can only run on solute+solvent!
-            warn("running specialized CosmoRSFeaturizer code")
             X = self.featurizer.run_solute_solvent(compounds=data["solute SMILES"].tolist(),solvents=data["solvent SMILES"].tolist())
 
         else:
