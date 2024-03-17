@@ -1,3 +1,4 @@
+from sklearn.model_selection import GridSearchCV
 from solvmate import *
 from solvmate.ranksolv import ood
 from solvmate.ranksolv.featurizer import (
@@ -457,7 +458,7 @@ class RecommenderFactory:
                                 )
 
                             stats_dct = {
-                                "reg": str(reg),
+                                "reg": str(reg.estimator) if is_cv_instance(reg,) else str(reg),
                                 "featurizer": str(featurizer),
                                 "feature_name": featurizer.feature_name,
                                 "pairwise_reduction": featurizer.pairwise_reduction,

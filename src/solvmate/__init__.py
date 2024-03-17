@@ -30,6 +30,9 @@ from typing import TYPE_CHECKING, Iterable
 from matplotlib import pyplot as plt
 
 import hashlib
+from sklearn.base import BaseEstimator
+
+from sklearn.model_selection import GridSearchCV
 
 
 if TYPE_CHECKING:
@@ -855,3 +858,54 @@ def screen_window_experiment(
                 # plt.savefig(f"example_{example_idx}.svg")
                 plt.show()
     return pd.DataFrame(stats)
+
+
+class SimpleGridSearchCV:
+
+    DEFAULT_PARAM_GRID = {
+    'SVC': {'model__C': [0.1, 1, 10, 100], 'model__kernel': ['rbf'], 'model__class_weight': ['balanced'], 'model__gamma': ['scale', 'auto', 1, 0.001, 0.01, 0.1]},
+    'RandomForestClassifier': {'n_estimators': [400,700,1000], 'class_weight': ['balanced'], 'min_samples_leaf': [2,3]},
+    'SVR': {'model__C': [0.1, 1, 10, 100], 'model__kernel': ['rbf'],  'model__gamma': ['scale', 'auto', 1, 0.001, 0.01, 0.1]},
+    'RandomForestRegressor': {'model__n_estimators': [400,700,1000], 'model__max_depth':[30, 50], 'model__n_jobs':[32], 'model__random_state': [123]},#'model__min_samples_leaf': [2,3] },
+    'Lasso': {'model__alpha': [0.01, 0.1, 1, 10]},
+    'ExtraTreesRegressor': {'model__n_estimators': [100, 200, 300], 'model__max_depth': [None, 10, 20], 'model__min_samples_split': [2, 5, 10]},
+    'MLPRegressor': {'model__hidden_layer_sizes': [(50,50), (100,), (100,50)], 'model__activation': ['relu', 'tanh'], 'model__alpha': [0.0001, 0.001, 0.01]},
+    'GradientBoostingRegressor': {'model__n_estimators': [100, 200, 300], 'model__learning_rate': [0.01, 0.1, 0.2], 'model__max_depth': [3, 5, 7]}
+    }
+
+    DEFAULT_SCORING = {
+        'SVC': 'f1',
+        'RandomForestClasisifer': 'f1',
+        'RandomForestRegressor': "r2",
+        'SVR': "r2",
+    }
+    def __init__(self,model,param_grid=None,scoring=None,n_jobs=8,) -> None:
+        self.model = model
+        if param_grid is None:
+            param_grid = self.DEFAULT_PARAM_GRID
+        self.param_grid = param_grid
+
+        if scoring is None:
+            scoring = self.DEFAULT_SCORING
+        self.scoring = scoring
+
+        self.n_jobs = n_jobs
+
+    def fit(self,*args,**kwargs,):
+        model_name = self.model.__class__.__name__
+        param_grid = self.param_grid[model_name]
+        scoring = self.scoring if isinstance(scoring,str) else self.scoring[model_name]
+        self.gs_ = GridSearchCV(self.model, param_grid, cv=5, scoring=scoring, n_jobs=self.n_jobs,)
+        self.gs_.fit(*args,**kwargs)
+        self.model_ = self.gs_.best_estimator_
+        self.model_.fit(*args,**kwargs)
+
+    def predict(self,*args,**kwargs):
+        self.model_.predict(*args,**kwargs)
+
+    def predict_proba(self,*args,**kwargs):
+        self.model_.predict_proba(*args,**kwargs)
+
+
+def is_cv_instance(reg):
+    return isinstance(reg,GridSearchCV) or isinstance(reg,SimpleGridSearchCV)
