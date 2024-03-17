@@ -145,20 +145,32 @@ class RecommenderFactory:
                     pairwise_reduction="concat",
                     feature_name="cosmors",
                 ),
-                HybridFeaturizer(
+                CosmoRSFeaturizer(
                     phase="train",
                     pairwise_reduction="diff",
-                    feature_name="hybrid",
-                    xtb_featurizer=XTBFeaturizer(
-                        phase="train",
-                        pairwise_reduction="diff",
-                        feature_name="xtb",
-                    ),
-                    ecfp_featurizer=CountECFPFeaturizer(
-                        phase="train",
-                        pairwise_reduction="diff",
-                        feature_name="ecfp_count",
-                    ),
+                    feature_name="cosmors",
+                ),
+                # Brings nothing. 
+                # Therefore removed to keep discussion simpler:
+                # HybridFeaturizer(
+                    # phase="train",
+                    # pairwise_reduction="diff",
+                    # feature_name="hybrid",
+                    # xtb_featurizer=XTBFeaturizer(
+                        # phase="train",
+                        # pairwise_reduction="diff",
+                        # feature_name="xtb",
+                    # ),
+                    # ecfp_featurizer=CountECFPFeaturizer(
+                        # phase="train",
+                        # pairwise_reduction="diff",
+                        # feature_name="ecfp_count",
+                    # ),
+                # ),
+                RandFeaturizer(
+                    phase="train",
+                    pairwise_reduction="concat",
+                    feature_name="rand",
                 ),
                 RandFeaturizer(
                     phase="train",
@@ -170,10 +182,23 @@ class RecommenderFactory:
                     pairwise_reduction="concat",
                     feature_name="prior",
                 ),
+                PriorFeaturizer(
+                    phase="train",
+                    pairwise_reduction="diff",
+                    feature_name="prior",
+                ),
                 ECFPSolventOnlyFeaturizer(
                     phase="train",
                     pairwise_reduction="concat",
                     feature_name="ecfp_solv",
+                ),
+                ECFPSolventOnlyFeaturizer(
+                    phase="train",
+                    pairwise_reduction="diff",
+                    feature_name="ecfp_solv",
+                ),
+                CountECFPFeaturizer(
+                    phase="train", pairwise_reduction="concat", feature_name="ecfp_count"
                 ),
                 CountECFPFeaturizer(
                     phase="train", pairwise_reduction="diff", feature_name="ecfp_count"
@@ -190,6 +215,9 @@ class RecommenderFactory:
                 ),
                 ECFPFeaturizer(
                     phase="train", pairwise_reduction="diff", feature_name="ecfp_bit"
+                ),
+                ECFPFeaturizer(
+                    phase="train", pairwise_reduction="concat", feature_name="ecfp_bit"
                 ),
                 CDDDFeaturizer(feature_name="cddd",phase="train",pairwise_reduction="concat"),
                 CDDDFeaturizer(feature_name="cddd",phase="train",pairwise_reduction="diff"),
