@@ -98,7 +98,7 @@ if __name__ == "__main__":
             perform_solvent_cv=False,
             nova_as_ood=False,
             save_recommender=False,
-            job_name="GS_PAPER_FEATURES_BAYER_OOD",
+            job_name="GS2_PAPER_FEATURES_BAYER_OOD",
             only_source=None,
             eval_on_ood=True,
         )
@@ -112,7 +112,7 @@ if __name__ == "__main__":
             perform_solvent_cv=False,
             nova_as_ood=True,
             save_recommender=False,
-            job_name="GS_PAPER_FEATURES_NOVA_OOD",
+            job_name="GS2_PAPER_FEATURES_NOVA_OOD",
             only_source=None,
             eval_on_ood=True,
         )
@@ -125,7 +125,7 @@ if __name__ == "__main__":
             perform_solvent_cv=False,
             nova_as_ood=False,
             save_recommender=False,
-            job_name="GS_PAPER_FEATURES_BUTINA",
+            job_name="GS2_PAPER_FEATURES_BUTINA",
             only_source=None,
             eval_on_ood=False,
         )
@@ -139,7 +139,7 @@ if __name__ == "__main__":
             perform_solvent_cv=True,
             nova_as_ood=True,
             save_recommender=False,
-            job_name="GS_PAPER_FEATURES_SOLVENT_CV",
+            job_name="GS2_PAPER_FEATURES_SOLVENT_CV",
             only_source=None,
             eval_on_ood=False,
         )
@@ -231,7 +231,7 @@ if __name__ == "__main__":
             nova_as_ood=False,
             eval_on_ood=False,
             save_recommender=False,
-            job_name="GS_PAPER_MODELS",
+            job_name="GS2_PAPER_MODELS",
             only_source=None,
         )
 

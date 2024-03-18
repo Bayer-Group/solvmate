@@ -1,5 +1,24 @@
 from solvmate import *
 import seaborn as sns
+import matplotlib.pyplot as plt
+plt.rcParams['svg.fonttype'] = 'none'
+
+def _post_process_svg(fle_out:Path):
+    """
+    post processes the given svg to make the figure
+    easier to digest visually by highlighting the
+    pairwise reduction parts
+    """
+    svg = fle_out.read_text()
+
+    for pat,repl in [
+        ("__diff","""<tspan dx="5" fill="gray"> (-) </tspan>"""),
+        ("__concat","""<tspan dx="5" fill="gray"> (+) </tspan>"""),
+        ]:
+        while pat in svg:
+            svg = svg.replace(pat,repl)
+    fle_out.write_text(svg)
+
 if __name__ == "__main__":
     con = sqlite3.connect(DATA_DIR / "observations.db")
     df = pd.read_sql("SELECT * FROM stats",con=con)
@@ -35,10 +54,14 @@ if __name__ == "__main__":
         sns.set_theme(style='darkgrid',palette="Paired")
         dfs = df[df.job_name == job_name] 
 
+        # remove the ecfp__solv and hybrid features because they don't add any new info:
+        dfs = dfs[dfs.feature_name.apply(lambda fn: (not "solv" in fn) and (not "hybrid" in fn))]
+
         dfs = dfs.sort_values(["feature_name__pairwise_reduction","to_abs_strat",])
 
         if job_name == "GS_PAPER_FEATURES":
             dfs = df[df.job_name == "GS_PAPER_FEATURES_BAYER_OOD"] # doesn't matter because test eval stays
+            dfs = dfs[dfs.feature_name.apply(lambda fn: (not "solv" in fn) and (not "hybrid" in fn))]
             dfs = dfs.sort_values(["feature_name__pairwise_reduction","to_abs_strat",])
             sns.barplot(
                 data=dfs,
@@ -63,7 +86,10 @@ if __name__ == "__main__":
         
         plt.tight_layout()
         plt.title(job_name)
-        plt.savefig(DATA_DIR / f"paper_{job_name}.svg")
-        plt.show()
+        fle_out = DATA_DIR / f"paper_{job_name}.svg"
+        plt.savefig(fle_out)
+        plt.clf()
+        _post_process_svg(fle_out)
+        os.system(f"open {fle_out}")
 
 
