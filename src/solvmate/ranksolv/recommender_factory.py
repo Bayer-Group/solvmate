@@ -243,7 +243,9 @@ class RecommenderFactory:
                 for n_estimators in n_estimators_range
             ]
             # + [DummyClassifier(strategy="prior", random_state=None, constant=None)] # obsolete
-        self.regs = regs
+        
+        # Wrap a grid search around it
+        self.regs = [SimpleGridSearchCV(reg) for reg in regs]
         self.sources = sources
 
     def train_and_eval_recommenders(
@@ -486,7 +488,7 @@ class RecommenderFactory:
                                 )
 
                             stats_dct = {
-                                "reg": str(reg.estimator) if is_cv_instance(reg,) else str(reg),
+                                "reg": str(reg.model_) if is_cv_instance(reg,) else str(reg),
                                 "featurizer": str(featurizer),
                                 "feature_name": featurizer.feature_name,
                                 "pairwise_reduction": featurizer.pairwise_reduction,
