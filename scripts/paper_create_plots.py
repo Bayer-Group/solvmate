@@ -81,9 +81,15 @@ if __name__ == "__main__":
         for _,row in df.iterrows()
     ]
 
-    for job_name in ['GS3_PAPER_FEATURES_BAYER_OOD', 'GS3_PAPER_FEATURES_NOVA_OOD',
-       'GS3_PAPER_FEATURES_BUTINA', 'GS3_PAPER_FEATURES_SOLVENT_CV',
-       'GS3_PAPER_MODELS', 'GS3_PAPER_FEATURES',]:
+    job_names = [
+            'GS3_PAPER_MODELS',
+            'GS3_PAPER_FEATURES',
+            'GS3_PAPER_FEATURES_BUTINA',
+            'GS3_PAPER_FEATURES_SOLVENT_CV',
+            'GS3_PAPER_FEATURES_NOVA_OOD',
+            'GS3_PAPER_FEATURES_BAYER_OOD', 
+         ]
+    for job_name in job_names:
         sns.set_theme(style='darkgrid',)#palette="Paired")
         dfs = df[df.job_name == job_name] 
 
@@ -123,13 +129,72 @@ if __name__ == "__main__":
                 x="ood_mean_spear_r" if "ood" in job_name.lower() else "mean_spear_r_test",
                 hue="to_abs_strat",    
             )
+
+        latex = dfs.copy()
+        spear_col = "ood_mean_spear_r" if "ood" in job_name.lower() else "mean_spear_r_test"
+        latex = latex[[
+            "feature_name",
+            "to_abs_strat",
+            spear_col,
+        ]]
+
+        latex["g_id"] = latex["feature_name"] + "__" + latex["to_abs_strat"]
+        latex_g = []
+        for g_id in sorted(latex["g_id"].unique()):
+            g = latex[latex["g_id"] == g_id]
+            latex_g.append({
+                "feature_name": g["feature_name"].iloc[0],
+                "to_abs_strat": g["to_abs_strat"].iloc[0],
+                "rho mean": g[spear_col].mean(),
+                "rho std": g[spear_col].std(),
+            })
+
+        latex_g = pd.DataFrame(latex_g)
+        for col,n_digits in [("rho mean",3), ("rho std",1),]:
+            latex_g[col] = latex_g[col].round(n_digits)
+        #latex_h = latex.groupby(["feature_name","to_abs_strat",])
+        #latex = latex_h.agg(["mean","std",])
+        #import pdb; pdb.set_trace()
+        #latex = latex.rename(columns={spear_col: "Spearman's rho"})
+        latex_g = latex_g.to_latex(index=False,)
+        Path(DATA_DIR / f"tabular__{job_name}.tex").write_text(latex_g)
+        #latex = latex.replace(spear_col, )
         
-        plt.tight_layout()
-        plt.title(job_name)
-        fle_out = DATA_DIR / f"paper_{job_name}.svg"
-        plt.savefig(fle_out)
-        plt.clf()
-        _post_process_svg(fle_out)
-        os.system(f"open {fle_out}")
+        if False:
+            plt.tight_layout()
+            plt.title(job_name)
+            fle_out = DATA_DIR / f"paper_{job_name}.svg"
+            plt.savefig(fle_out)
+            plt.clf()
+            _post_process_svg(fle_out)
+            os.system(f"open {fle_out}")
+
+        
+    one_latex = ""
+    for job_name in job_names:
+        if "models" in job_name.lower():
+            continue
+        one_latex += '\\textbf{'+job_name.replace("_","\_")+'}'
+        one_latex += Path(DATA_DIR / f"tabular__{job_name}.tex").read_text()
+
+    def remove_duplicate_line_starters(txt:str):
+        lines = txt.split("\n")
+        out_lines = txt.split("\n")
+        for i in range(len(lines)-1):
+            this_line = lines[i]
+            next_line = lines[i+1]
+            if this_line.split("&")[0] == next_line.split("&")[0]:
+                print("!!!")
+                out_lines[i+1] = " & ".join(["\t~"]+(next_line.split("&")[1:]))
+        return "\n".join(out_lines)
+
+    one_latex = remove_duplicate_line_starters(one_latex)
+
+    print(80*"=")
+    print(one_latex)
+    print(80*"=")
+
+
+        
 
 
