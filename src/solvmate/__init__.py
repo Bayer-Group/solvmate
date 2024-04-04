@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from solvmate.ranksolv.recommender import Recommender
     from solvmate.ranksolv.jack_knife_recommender import JackKnifeRecommender
 
-USE_COSMO_RS_FEATURES = True
+#USE_COSMO_RS_FEATURES = True
 
 # The minimum difference that we expect out of pairs in log units.
 # Set to 0.25, so 1/4 log(S) units as this should be close

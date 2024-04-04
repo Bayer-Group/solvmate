@@ -140,16 +140,22 @@ class RecommenderFactory:
 
         if featurizers is None:
             featurizers = [
-                CosmoRSFeaturizer(
-                    phase="train",
-                    pairwise_reduction="concat",
-                    feature_name="cosmors",
-                ),
-                CosmoRSFeaturizer(
-                    phase="train",
-                    pairwise_reduction="diff",
-                    feature_name="cosmors",
-                ),
+                # Commented out because this would be hell for anyone to
+                # actually use because of the long runtimes...
+                # It is only included here for reproducibility of the paper:
+                #CosmoRSFeaturizer(
+                    #phase="train",
+                    #pairwise_reduction="concat",
+                    #feature_name="cosmors",
+                #),
+                #CosmoRSFeaturizer(
+                    #phase="train",
+                    #pairwise_reduction="diff",
+                    #feature_name="cosmors",
+                #),
+                # Overall, the results with the COSMO-RS were so disappointing
+                # that I would not recommend spending any time into it!
+
                 # Brings nothing. 
                 # Therefore removed to keep discussion simpler:
                 # HybridFeaturizer(
