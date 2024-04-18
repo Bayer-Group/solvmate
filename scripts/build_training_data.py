@@ -184,6 +184,8 @@ if __name__ == "__main__":
 
             df = df[cosmo_filter]
             warn("after: " + str(len(df)))
+        else:
+            warn("NOT FILTERING OUT THE COSMO-CALCULATED SMILES ONLY ")
 
         # Used this for comparing with COSMO-RS results.
         df = filter_relevant_subset(

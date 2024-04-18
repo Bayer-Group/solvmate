@@ -22,11 +22,11 @@ def _sqrt_sample(
     for solu_smi in df[col_solu].unique():
         g = df[df[col_solu] == solu_smi]
         if len(g) > N_min:
-            g = g.sample(int(N_min + (len(g) - N_min) ** 0.5))
+            g = g.sample(int(N_min + (len(g) - N_min) ** 0.5),random_state=123,)
 
         if hard_downsample:
             assert hard_downsample_by is not None
-            g = g.sample(frac=hard_downsample_by)
+            g = g.sample(frac=hard_downsample_by,random_state=123,)
 
         df_out.append(g)
 

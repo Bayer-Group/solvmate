@@ -1,5 +1,6 @@
 .git/
 data/
+!data/recommender_*.pkl
 !data/solvent_selection.db
 !data/20150430SolubilitiesSum.xlsx
 !data/novartis_dataset_c7ce00738h6.csv

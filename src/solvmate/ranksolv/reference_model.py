@@ -58,26 +58,31 @@ class AbsoluteRecommender:
         else:
             self.featurizer.phase = "predict"
 
-        smiles = (
-            data["solute SMILES"].unique().tolist()
-            + data["solvent SMILES"].unique().tolist()
-        )
+        if "CosmoRSFeaturizer" in str(self.featurizer.__class__.__name__):
+            # CosmoRS can only run on solute+solvent!
+            X = self.featurizer.run_solute_solvent(compounds=data["solute SMILES"].tolist(),solvents=data["solvent SMILES"].tolist())
 
-        smi_to_x = {
-            smi: x for smi, x in zip(smiles, self.featurizer.run_single(smiles))
-        }
-
-        X_solu = np.vstack(data["solute SMILES"].map(smi_to_x))
-        if len(X_solu.shape) == 1:
-            X_solu = X_solu.reshape(-1, 1)
-        X_solv = np.vstack(data["solvent SMILES"].map(smi_to_x))
-        if len(X_solv.shape) == 1:
-            X_solv = X_solv.reshape(-1, 1)
-
-        if isinstance(self.featurizer, PriorFeaturizer):
-            # The prior featurizer intends to only encode the solvent side:
-            X = X_solv
         else:
-            X = np.hstack([X_solu, X_solv])
+            smiles = (
+                data["solute SMILES"].unique().tolist()
+                + data["solvent SMILES"].unique().tolist()
+            )
+
+            smi_to_x = {
+                smi: x for smi, x in zip(smiles, self.featurizer.run_single(smiles))
+            }
+
+            X_solu = np.vstack(data["solute SMILES"].map(smi_to_x))
+            if len(X_solu.shape) == 1:
+                X_solu = X_solu.reshape(-1, 1)
+            X_solv = np.vstack(data["solvent SMILES"].map(smi_to_x))
+            if len(X_solv.shape) == 1:
+                X_solv = X_solv.reshape(-1, 1)
+
+            if isinstance(self.featurizer, PriorFeaturizer):
+                # The prior featurizer intends to only encode the solvent side:
+                X = X_solv
+            else:
+                X = np.hstack([X_solu, X_solv])
 
         return X

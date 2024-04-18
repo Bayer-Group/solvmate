@@ -74,11 +74,169 @@ if __name__ == "__main__":
         required=False,
         dest="only_source",
     )
+    parser.add_argument(
+        "--paper",
+        action="store_true",
+        help="reproduce the results of the paper",
+        required=False,
+        dest="paper",
+    )
     args = parser.parse_args()
 
     assert sum(
-        [args.hyperp, args.screen_model_types, args.finalretrain]
-    ), "specify only one of: --hyperp --screen-model-types --finalretrain"
+        [args.hyperp, args.screen_model_types, args.finalretrain, args.paper,]
+    ), "specify only one of: --hyperp --screen-model-types --finalretrain --paper"
+
+
+    if args.paper:
+        info("reproducing the paper results")
+        info("first: cross validation on features, OOD on Bayer")
+        rcf = RecommenderFactory()
+        rcf.train_and_eval_recommenders(
+            perform_cv=True,
+            perform_butina_cv=False,
+            perform_solvent_cv=False,
+            nova_as_ood=False,
+            save_recommender=False,
+            job_name="GS4_PAPER_FEATURES_BAYER_OOD",
+            only_source=None,
+            eval_on_ood=True,
+        )
+        info("DONE.")
+
+        info("second: cross validation on features, OOD on Nova")
+        rcf = RecommenderFactory()
+        rcf.train_and_eval_recommenders(
+            perform_cv=True,
+            perform_butina_cv=False,
+            perform_solvent_cv=False,
+            nova_as_ood=True,
+            save_recommender=False,
+            job_name="GS4_PAPER_FEATURES_NOVA_OOD",
+            only_source=None,
+            eval_on_ood=True,
+        )
+        info("DONE.")
+
+        rcf = RecommenderFactory()
+        rcf.train_and_eval_recommenders(
+            perform_cv=True,
+            perform_butina_cv=True,
+            perform_solvent_cv=False,
+            nova_as_ood=False,
+            save_recommender=False,
+            job_name="GS4_PAPER_FEATURES_BUTINA",
+            only_source=None,
+            eval_on_ood=False,
+        )
+        info("DONE.")
+
+        info("second: cross validation on features, OOD on Nova")
+        rcf = RecommenderFactory()
+        rcf.train_and_eval_recommenders(
+            perform_cv=True,
+            perform_butina_cv=False,
+            perform_solvent_cv=True,
+            nova_as_ood=True,
+            save_recommender=False,
+            job_name="GS4_PAPER_FEATURES_SOLVENT_CV",
+            only_source=None,
+            eval_on_ood=False,
+        )
+        info("DONE.")
+        info("screening model types")
+        rcf = RecommenderFactory(
+            featurizers=[
+                XTBFeaturizer(
+                    phase="train",
+                    pairwise_reduction="diff",
+                    feature_name="xtb",
+                ),
+            ],
+            regs=[
+                Lasso(
+                    alpha=1.0,
+                    fit_intercept=True,
+                    precompute=False,
+                    copy_X=True,
+                    max_iter=1000,
+                    tol=0.0001,
+                    warm_start=False,
+                    positive=False,
+                    random_state=None,
+                    selection="cyclic",
+                ),
+                ExtraTreesRegressor(
+                    n_jobs=N_JOBS,
+                    n_estimators=100,
+                ),
+                RandomForestRegressor(
+                    n_jobs=N_JOBS,
+                    n_estimators=100,
+                ),
+                MLPRegressor(
+                    hidden_layer_sizes=(100,),
+                    activation="relu",
+                    solver="adam",
+                    alpha=0.0001,
+                    batch_size="auto",
+                    learning_rate="constant",
+                    learning_rate_init=0.001,
+                    power_t=0.5,
+                    max_iter=200,
+                    shuffle=True,
+                    random_state=None,
+                    tol=0.0001,
+                    verbose=False,
+                    warm_start=False,
+                    momentum=0.9,
+                    nesterovs_momentum=True,
+                    early_stopping=False,
+                    validation_fraction=0.1,
+                    beta_1=0.9,
+                    beta_2=0.999,
+                    epsilon=1e-08,
+                    n_iter_no_change=10,
+                    max_fun=15000,
+                ),
+                GradientBoostingRegressor(
+                    loss="squared_error",
+                    learning_rate=0.1,
+                    n_estimators=100,
+                    subsample=1.0,
+                    criterion="friedman_mse",
+                    min_samples_split=2,
+                    min_samples_leaf=1,
+                    min_weight_fraction_leaf=0.0,
+                    max_depth=3,
+                    min_impurity_decrease=0.0,
+                    init=None,
+                    random_state=None,
+                    max_features=None,
+                    alpha=0.9,
+                    verbose=0,
+                    max_leaf_nodes=None,
+                    warm_start=False,
+                    validation_fraction=0.1,
+                    n_iter_no_change=None,
+                    tol=0.0001,
+                    ccp_alpha=0.0,
+                ),
+            ],
+        )
+        rcf.train_and_eval_recommenders(
+            perform_cv=True,
+            perform_butina_cv=False,
+            perform_solvent_cv=False,
+            nova_as_ood=False,
+            eval_on_ood=False,
+            save_recommender=False,
+            job_name="GS4_PAPER_MODELS",
+            only_source=None,
+        )
+
+
+
     if args.hyperp:
         info("hyperparameter search selected")
         rcf = RecommenderFactory()

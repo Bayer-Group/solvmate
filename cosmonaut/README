@@ -1,0 +1,8 @@
+Provides COSMO-RS based featurization for ML models.
+
+Contains all the functionality needed to run COSMO/COSMO-RS calculations.
+Uses the conformer pipeline from https://github.com/TUHH-TVT/openCOSMO-RS_conformer_pipeline
+and then runs COSMO + COSMO-RS publications to automatically create
+COSMO-RS based QM descriptors that get be readily fed into ML models
+(see e.g. `scripts/train_and_eval_model.py` for a solubility ML model
+trained in this fashion).

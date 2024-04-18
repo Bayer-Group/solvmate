@@ -30,13 +30,16 @@ from typing import TYPE_CHECKING, Iterable
 from matplotlib import pyplot as plt
 
 import hashlib
+from sklearn.base import BaseEstimator
+
+from sklearn.model_selection import GridSearchCV
 
 
 if TYPE_CHECKING:
     from solvmate.ranksolv.recommender import Recommender
     from solvmate.ranksolv.jack_knife_recommender import JackKnifeRecommender
 
-USE_COSMO_RS_FEATURES = True
+#USE_COSMO_RS_FEATURES = True
 
 # The minimum difference that we expect out of pairs in log units.
 # Set to 0.25, so 1/4 log(S) units as this should be close
@@ -855,3 +858,61 @@ def screen_window_experiment(
                 # plt.savefig(f"example_{example_idx}.svg")
                 plt.show()
     return pd.DataFrame(stats)
+
+
+from sklearn.experimental import enable_halving_search_cv
+from sklearn.model_selection import HalvingRandomSearchCV
+class SimpleGridSearchCV:
+
+    DEFAULT_PARAM_GRID = {
+    'SVC': {'C': [0.1, 1, 10, 100], 'kernel': ['rbf'], 'class_weight': ['balanced'], 'gamma': ['scale', 'auto', 1, 0.001, 0.01, 0.1]},
+    'RandomForestClassifier': {'n_estimators': [400,700,1000], 'class_weight': ['balanced'], 'min_samples_leaf': [2,3]},
+    'SVR': {'C': [0.1, 1, 10, 100], 'kernel': ['rbf'],  'gamma': ['scale', 'auto', 1, 0.001, 0.01, 0.1]},
+    'RandomForestRegressor': {'n_estimators': [400,700,1000], 'max_depth':[30, 50], 'n_jobs':[32], 'random_state': [123]},#'min_samples_leaf': [2,3] },
+    'Lasso': {'alpha': [0.01, 0.1, 1, 10]},
+    'ExtraTreesRegressor': {'n_estimators': [100, 200, 300], 'max_depth': [None, 10, 20], 'min_samples_split': [2, 5, 10]},
+    'MLPRegressor': {'hidden_layer_sizes': [(50,50), (100,), (100,50)], 'activation': ['relu', 'tanh'], 'alpha': [0.0001, 0.001, 0.01]},
+    'GradientBoostingRegressor': {'n_estimators': [100, 200, 300], 'learning_rate': [0.01, 0.1, 0.2], 'max_depth': [3, 5, 7]}
+    }
+
+    DEFAULT_SCORING = "r2"
+    #{
+    #    'SVC': 'f1',
+    #    'RandomForestClassifier': 'f1',
+    #    'RandomForestRegressor': "r2",
+    #    'SVR': "r2",
+    #}
+
+    def __init__(self,model,param_grid=None,scoring=None,n_jobs=8,) -> None:
+        self.model = model
+        if param_grid is None:
+            param_grid = self.DEFAULT_PARAM_GRID
+        self.param_grid = param_grid
+
+        if scoring is None:
+            scoring = self.DEFAULT_SCORING
+        self.scoring = scoring
+
+        self.n_jobs = n_jobs
+
+    def fit(self,*args,**kwargs,):
+        model_name = self.model.__class__.__name__
+        param_grid = self.param_grid[model_name]
+        scoring = self.scoring if isinstance(self.scoring,str) else self.scoring[model_name]
+        # The simple GridSearchCV is far too slow.
+        # Therefore, I decided to use the HalvingRandomSearchCV as it heavily speeds up
+        # the parameter search procedure...
+        self.gs_ = HalvingRandomSearchCV(self.model, param_grid, cv=3, scoring=scoring, n_jobs=self.n_jobs,)
+        self.gs_.fit(*args,**kwargs)
+        self.model_ = self.gs_.best_estimator_
+        return self.model_.fit(*args,**kwargs)
+
+    def predict(self,*args,**kwargs):
+        return self.model_.predict(*args,**kwargs)
+
+    def predict_proba(self,*args,**kwargs):
+        return self.model_.predict_proba(*args,**kwargs)
+
+
+def is_cv_instance(reg):
+    return isinstance(reg,GridSearchCV) or isinstance(reg,SimpleGridSearchCV)

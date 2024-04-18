@@ -79,6 +79,55 @@ def parse_ood_data(
     return df
 
 
+def parse_ood_data_bayer():
+    solvent_to_iupac = {
+        "n-Heptan": ["n-heptane"],
+        "Cyclohexan": ["cyclohexane"],
+        "Diisopropylether": ["diisopropylether"],
+        "Toluol": ["toluene"],
+        "Tetrahydrofuran": ["tetrahydrofurane"],
+        "Aceton": ["acetone"],
+        "Ethylacetat": ["ethylacetate"],
+        "ACN": ["acetonitrile"],
+        "2-Propanol": ["2-propanol"],
+        "Ethanol": ["ethanol"],
+        "EtOH / Wasser 1:1": ["ethanol", "water"],
+        "Methanol": ["methanol"],
+        "Wasser": ["water"],
+        "Dichlormethan": ["dichloromethane"],
+    }
+    fle = Path(os.path.expanduser("~/data/bayer/ess_solubility_excerpt.xlsx"))
+    assert fle.exists()
+    df = pd.read_excel(
+        fle,
+    )
+    df["solvent_name"] = df["Lösungsmittel"]
+    df["solvent SMILES"] = df["solvent_name"].apply(
+        lambda sn: ".".join(
+            [opsin_iupac_to_smiles(iup) for iup in solvent_to_iupac[sn.strip()]]
+        )
+    )
+    df["solvent SMILES"] = df["solvent SMILES"].apply(Chem.CanonSmiles)
+    df["solute SMILES"] = df["SMILES"]
+    df["solub"] = df["Bewertung Löslichkeit"]
+    df = df[~df["solub"].isna()]
+    df = df[df["solub"].apply(len) != 0]
+    df["conc"] = df["solub"].apply(lambda s: s.count("+") - s.count("-"))
+    df = df[~df["conc"].isna()]
+
+    fill_up_smiles = list(df["solute SMILES"])
+    fill_with = fill_up_smiles[0]
+    for i, smi in enumerate(fill_up_smiles):
+        assert fill_with
+        if not smi or not str(smi).strip() or str(smi).lower() == "nan":
+            fill_up_smiles[i] = fill_with
+        else:
+            fill_with = smi
+    df["solute SMILES"] = fill_up_smiles
+
+    return df
+
+
 def run():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -87,7 +136,12 @@ def run():
         action="store_true",
         default=False,
     )
-
+    parser.add_argument(
+        "--bayer",
+        required=False,
+        action="store_true",
+        default=False,
+    )
     parser.add_argument(
         "--recf",
         required=False,
@@ -107,9 +161,12 @@ def run():
     print("using recommender from file", fp)
     rec = get_recommender(fle=fp)
 
-    data = parse_ood_data(
-        use_blacklist=args.blacklist,
-    )
+    if args.bayer:
+        data = parse_ood_data_bayer()
+    else:
+        data = parse_ood_data(
+            use_blacklist=args.blacklist,
+        )
 
     if os.environ.get("_PR_FAST_DEBUG"):
         print("WARNING: fast debug mode enabled. sampling very small subset")
