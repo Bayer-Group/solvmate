@@ -4,7 +4,7 @@
 
 A practical web application for the recommendation of organic solvents
 based on the paper
-*Solvmate - A hybrid physical/ML approach to solvent recommendation leveraging a rank-based problem framing* (**citation link will follow**).
+*Solvmate - A hybrid physical/ML approach to solvent recommendation leveraging a rank-based problem framework* (https://chemrxiv.org/engage/chemrxiv/article-details/662f451f418a5379b0012795).
 
 <img src="/figures/figure_webapp_2.svg" width="300" height="300">
 
