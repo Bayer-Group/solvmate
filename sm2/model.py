@@ -204,23 +204,24 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
     train_size = train_loader.dataset.__len__()
     batch_size = train_loader.batch_size
 
-    optimizer = Adam(net.parameters(), lr=1e-5, weight_decay=1e-10)
-    print("applying decreasing lr scheme across layers...")
-    optimizer = Adam(
-        [
-        {"params": net.project_node_feats.parameters(), "lr":1e-6},
-        {"params": net.gnn_layer.parameters(), "lr":1e-5},
-        {"params": net.gru.parameters(), "lr":1e-4},
-        {"params": net.readout.parameters(), "lr":1e-4},
-        {"params": net.predict.parameters(), "lr":1e-3},
-        ],
-        lr=1e-5,
-        weight_decay=1e-10,
-    )
-    lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=20, min_lr=1e-6, verbose=True)
+    optimizer = Adam(net.parameters(), lr=1e-3,)# weight_decay=1e-10)
+    if False:
+        print("applying decreasing lr scheme across layers...")
+        optimizer = Adam(
+            [
+            {"params": net.project_node_feats.parameters(), "lr":1e-6},
+            {"params": net.gnn_layer.parameters(), "lr":1e-5},
+            {"params": net.gru.parameters(), "lr":1e-4},
+            {"params": net.readout.parameters(), "lr":1e-4},
+            {"params": net.predict.parameters(), "lr":1e-3},
+            ],
+            lr=1e-5,
+            weight_decay=1e-10,
+        )
+    #lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=20, min_lr=1e-6, verbose=True)
 
     max_epochs = 500
-    val_y = np.hstack([inst[-2][inst[-1]] for inst in iter(val_loader.dataset)])
+    val_y = np.hstack([inst[-1] for inst in iter(val_loader.dataset)])
     val_log = np.zeros(max_epochs)
     for epoch in range(max_epochs):
         
@@ -229,23 +230,24 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
         start_time = time.time()
         for batchidx, batchdata in enumerate(train_loader):
 
+            optimizer.zero_grad()
             inputs, n_nodes, y = batchdata
             
             y = (y - train_y_mean) / train_y_std
             
             inputs = inputs.to(cuda)
-            n_nodes = n_nodes.to(cuda)
+            #n_nodes = n_nodes.to(cuda)
             y = y.to(cuda)
             
             predictions = net(inputs,) # n_nodes, y)
             
-            loss = torch.abs(predictions - y).mean()
+            loss = torch.abs(predictions.squeeze() - y).mean()
             
-            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             
             train_loss = loss.detach().item() * train_y_std
+            print('train_loss --- ',train_loss)
 
         #print('--- training epoch %d, processed %d/%d, loss %.3f, time elapsed(min) %.2f' %(epoch,  train_size, train_size, train_loss, (time.time()-start_time)/60))
     
@@ -259,7 +261,7 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
         if epoch % 10 == 0: 
             print('--- validation epoch %d, processed %d, current MAE %.3f, current r2 %.3f, current spearr %.3f, best MAE %.3f, time elapsed(min) %.2f' %(epoch, val_loader.dataset.__len__(), val_loss, val_r2, val_spearmanr, np.min(val_log[:epoch + 1]), (time.time()-start_time)/60))
         
-        lr_scheduler.step(val_loss)
+        #lr_scheduler.step(val_loss)
         
         # earlystopping
         if np.argmin(val_log[:epoch + 1]) == epoch:
@@ -277,35 +279,43 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
 def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, cuda = torch.device('cuda:0')):
 
     net.eval()
-    MC_dropout(net)
-    tsty_pred = []
+    #MC_dropout(net)
     with torch.no_grad():
+        y_pred = []
         for batchidx, batchdata in enumerate(test_loader):
-        
-            inputs = batchdata[0].to(cuda)
-            n_nodes = batchdata[1].to(cuda)
 
-            tsty_pred.append(np.array([net(inputs, n_nodes).cpu().numpy() for _ in range(n_forward_pass)]).transpose())
+            inputs, n_nodes, _ = batchdata
+            
+            inputs = inputs.to(cuda)
+            
+            predictions = net(inputs,) # n_nodes, y)
+            y_pred.append(predictions.cpu().numpy())
 
-    tsty_pred = np.vstack(tsty_pred) * train_y_std + train_y_mean
+    y_pred_inv_std = np.vstack(y_pred) * train_y_std + train_y_mean
+    return y_pred_inv_std
     
-    return np.mean(tsty_pred, 1)
-
-
-
 
 def run_for_smiles(smis:list[str],):
     data_split = [0.8, 0.1, 0.1]
     batch_size = 128
-    use_pretrain = True
+    use_pretrain = False
 
     here = Path(__file__).parent
     model_path = str(here / 'checkpoints' / 'model.pt')
     random_seed = 1
     #if not os.path.exists(model_path): os.makedirs(model_path)
-    data_pred = pd.DataFrame({"solute SMILES": smis, "conc": [0 for _ in smis]})
+    data_pred = pd.DataFrame({"solute SMILES": smis, "solvent SMILES": ["CCO" for _ in smis], "conc": [0 for _ in smis]})
     data_pred = GraphDataset(data_pred)
     data = pd.read_csv(here /  "data" / "training_data_singleton.csv")
+    #data = data[data["solvent SMILES"].apply(Chem.CanonSmiles) == Chem.CanonSmiles("O")] # TODO: remove downsampling!
+    #data["mol"] = data["solute SMILES"].apply(Chem.MolFromSmiles)
+    #data["conc"] = data["mol"].apply(lambda mol: mol.GetNumAtoms()) # TODO: remove simple dummy task!
+    #data["conc"] = [0 for _ in data.iterrows()]
+
+    data["mol"] = data["solute SMILES"].apply(Chem.MolFromSmiles)
+    from rdkit.Chem import Crippen
+    data["conc"] = data["mol"].apply(lambda mol: Crippen.MolLogP(mol)) # TODO: remove simple dummy task!
+
     data = GraphDataset(data)
     train_set, val_set, test_set = split_dataset(data, data_split, shuffle=True, random_state=random_seed)
 
@@ -314,9 +324,9 @@ def run_for_smiles(smis:list[str],):
     test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False, collate_fn=collate_reaction_graphs)
     pred_loader = DataLoader(dataset=data_pred, batch_size=batch_size, shuffle=False, collate_fn=collate_reaction_graphs)
 
-    train_y = np.hstack([inst[-2][inst[-1]] for inst in iter(train_loader.dataset)])
-    train_y_mean = np.mean(train_y)
-    train_y_std = np.std(train_y)
+    train_y = np.hstack([inst[-1] for inst in iter(train_loader.dataset)])
+    train_y_mean = np.mean(train_y.reshape(-1))
+    train_y_std = np.std(train_y.reshape(-1))
 
     node_dim = data.node_attr.shape[1]
     edge_dim = data.edge_attr.shape[1]
@@ -330,7 +340,7 @@ def run_for_smiles(smis:list[str],):
 
 
     # training
-    if not use_pretrain:
+    if not use_pretrain or not Path(model_path).exists():
         print('-- TRAINING')
         net = training(net, train_loader, val_loader, train_y_mean, train_y_std, model_path)
     else:
@@ -339,7 +349,7 @@ def run_for_smiles(smis:list[str],):
 
 
     # inference
-    test_y = np.hstack([inst[-2][inst[-1]] for inst in iter(test_loader.dataset)])
+    test_y = np.hstack([inst[-1] for inst in iter(test_loader.dataset)])
     test_y_pred = inference(net, test_loader, train_y_mean, train_y_std)
     test_mae = mean_absolute_error(test_y, test_y_pred)
 
