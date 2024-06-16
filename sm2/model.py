@@ -321,7 +321,9 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     #data["conc"] = data["mol"].apply(lambda mol: mol.GetNumAtoms()) # TODO: remove simple dummy task!
     #data["conc"] = [0 for _ in data.iterrows()]
 
+    # TODO: remove the following section that just provides a simple dummy task:
     data["mol"] = data["solute SMILES"].apply(Chem.MolFromSmiles)
+    data = data.drop_duplicates("solute SMILES")
     from rdkit.Chem import Crippen
     data["conc"] = data["mol"].apply(lambda mol: Crippen.MolLogP(mol)) # TODO: remove simple dummy task!
 
