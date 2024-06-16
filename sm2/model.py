@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from dgl.data.utils import split_dataset
 
 from dataset import GraphDataset
-from util import collate_reaction_graphs
+from util import collate_reaction_graphs, store_result, path_for_experiment_and_fle
 
 from sklearn.metrics import mean_absolute_error,r2_score
 from scipy import stats
@@ -199,7 +199,7 @@ class nmrMPNN(nn.Module):
         return out
 
         
-def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_path, n_forward_pass = 5, cuda = torch.device('cuda:0')):
+def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_path, n_forward_pass = 5, cuda = torch.device('cuda:0'), experiment_name=None):
 
     train_size = train_loader.dataset.__len__()
     batch_size = train_loader.batch_size
@@ -223,6 +223,7 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
     max_epochs = 500
     val_y = np.hstack([inst[-1] for inst in iter(val_loader.dataset)])
     val_log = np.zeros(max_epochs)
+    train_log = np.zeros(max_epochs)
     for epoch in range(max_epochs):
         
         # training
@@ -247,7 +248,8 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
             optimizer.step()
             
             train_loss = loss.detach().item() * train_y_std
-            print('train_loss --- ',train_loss)
+            train_log[epoch] = train_loss
+
 
         #print('--- training epoch %d, processed %d/%d, loss %.3f, time elapsed(min) %.2f' %(epoch,  train_size, train_size, train_loss, (time.time()-start_time)/60))
     
@@ -272,6 +274,13 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
 
     print('training terminated at epoch %d' %epoch)
     net.load_state_dict(torch.load(model_path))
+
+    from matplotlib import pyplot as plt
+    plt.clf()
+    plt.plot(val_log,"b-o")
+    plt.plot(train_log,"r-o")
+    plt.savefig(path_for_experiment_and_fle(experiment_name=experiment_name,fle_name="loss_curve.svg"))
+    plt.clf()
     
     return net
     
@@ -295,7 +304,7 @@ def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, 
     return y_pred_inv_std
     
 
-def run_for_smiles(smis:list[str],):
+def run_for_smiles(smis:list[str],experiment_name:str,):
     data_split = [0.8, 0.1, 0.1]
     batch_size = 128
     use_pretrain = False
@@ -342,7 +351,7 @@ def run_for_smiles(smis:list[str],):
     # training
     if not use_pretrain or not Path(model_path).exists():
         print('-- TRAINING')
-        net = training(net, train_loader, val_loader, train_y_mean, train_y_std, model_path)
+        net = training(net, train_loader, val_loader, train_y_mean, train_y_std, model_path,experiment_name=experiment_name,)
     else:
         print('-- LOAD SAVED MODEL')
         net.load_state_dict(torch.load(model_path))
@@ -359,4 +368,5 @@ def run_for_smiles(smis:list[str],):
 
 
 if __name__ == "__main__":
-    run_for_smiles(["CCOCC"])
+
+    run_for_smiles(["CCOCC"],experiment_name="crippen_log_p",)
