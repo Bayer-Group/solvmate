@@ -316,11 +316,6 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     data_pred = pd.DataFrame({"solute SMILES": smis, "solvent SMILES": ["CCO" for _ in smis], "conc": [0 for _ in smis]})
     data_pred = GraphDataset(data_pred)
     data = pd.read_csv(here /  "data" / "training_data_singleton.csv")
-    data = data[data["solvent SMILES"].apply(Chem.CanonSmiles) == Chem.CanonSmiles("O")] # TODO: remove downsampling!
-    data = data.drop_duplicates("solute SMILES")
-    #data["mol"] = data["solute SMILES"].apply(Chem.MolFromSmiles)
-    #data["conc"] = data["mol"].apply(lambda mol: mol.GetNumAtoms()) # TODO: remove simple dummy task!
-    #data["conc"] = [0 for _ in data.iterrows()]
 
     data = GraphDataset(data)
     train_set, val_set, test_set = split_dataset(data, data_split, shuffle=True, random_state=random_seed)
