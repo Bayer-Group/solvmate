@@ -6,15 +6,14 @@ import numpy as np
 
                         
 def collate_reaction_graphs(batch):
-
-    gs, n_nodes, shifts = map(list, zip(*batch))
+    g_solu, g_solva, g_solvb, conc = map(list, zip(*batch))
     
-    gs = dgl.batch(gs)
+    g_solu = dgl.batch(g_solu)
+    g_solva = dgl.batch(g_solva)
+    g_solvb = dgl.batch(g_solvb)
 
-    n_nodes = torch.LongTensor(np.hstack(n_nodes))
-    shifts = torch.FloatTensor(np.hstack(shifts))
-    
-    return gs, n_nodes, shifts
+    conc = torch.FloatTensor(np.hstack(conc))
+    return g_solu, g_solva, g_solvb, conc
 
 
 def MC_dropout(model):

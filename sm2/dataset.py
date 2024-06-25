@@ -223,7 +223,6 @@ class SMDataset():
 
     def __init__(self, df:pd.DataFrame,):
         self._read_dataframe(df)
-        self._load()
 
 
     def _read_dataframe(self, df:pd.DataFrame):
@@ -334,6 +333,8 @@ class SMDataset():
                         'smi': []}
                             
             for i, mol in enumerate(molsuppl):
+                if isinstance(mol,str):
+                    mol = from_smi(mol)
 
                 try:
                     Chem.SanitizeMol(mol)
@@ -381,7 +382,7 @@ class SMDataset():
         self.mol_dict_solva = _read_mol_dict(df["solvent SMILES a"])
         self.mol_dict_solvb = _read_mol_dict(df["solvent SMILES b"])
         self.mol_dict_solu = _read_mol_dict(df["solute SMILES"])
-        self.conc = df["conc"]
+        self.conc = df["conc"].values
 
     def _load_graph(self,mol_dict:dict,idx:int,):
         e_csum = mol_dict["e_csum"]
@@ -406,4 +407,4 @@ class SMDataset():
         
     def __len__(self):
 
-        return self.n_node.shape[0]
+        return len(self.conc)

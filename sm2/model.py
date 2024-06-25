@@ -1,7 +1,7 @@
 import argparse
 import pandas as pd
 from pathlib import Path
-from dataset import GraphDataset
+from dataset import GraphDataset, SMDataset
 from rdkit import Chem
 from rdkit.Chem import SDWriter
 import numpy as np
@@ -122,6 +122,64 @@ class MPNNPredictor(nn.Module):
         graph_feats = self.readout(g, node_feats)
         return self.predict(graph_feats)
 
+class SMPredictor(nn.Module):
+    def __init__(self,
+                 node_in_feats,
+                 edge_in_feats,
+                 node_out_feats=64,
+                 edge_hidden_feats=128,
+                 n_tasks=1,
+                 num_step_message_passing=6,
+                 num_step_set2set=6,
+                 num_layer_set2set=3):
+        super(SMPredictor, self).__init__()
+
+        self.gnn_solu = MPNNGNN(node_in_feats=node_in_feats,
+                           node_out_feats=node_out_feats,
+                           edge_in_feats=edge_in_feats,
+                           edge_hidden_feats=edge_hidden_feats,
+                           num_step_message_passing=num_step_message_passing)
+
+        self.gnn_solv_a = MPNNGNN(node_in_feats=node_in_feats,
+                           node_out_feats=node_out_feats,
+                           edge_in_feats=edge_in_feats,
+                           edge_hidden_feats=edge_hidden_feats,
+                           num_step_message_passing=num_step_message_passing)
+
+        self.gnn_solv_b = MPNNGNN(node_in_feats=node_in_feats,
+                           node_out_feats=node_out_feats,
+                           edge_in_feats=edge_in_feats,
+                           edge_hidden_feats=edge_hidden_feats,
+                           num_step_message_passing=num_step_message_passing)
+
+        self.readout = Set2Set(input_dim=node_out_feats,
+                               n_iters=num_step_set2set,
+                               n_layers=num_layer_set2set)
+        self.predict = nn.Sequential(
+            nn.Linear(2 * 3 * node_out_feats, node_out_feats),
+            nn.ReLU(),
+            nn.Linear(node_out_feats, n_tasks)
+        )
+
+    def forward(self, g_solu, g_solv_a, g_solv_b ):
+        node_feats_solu = g_solu.ndata['node_attr']
+        edge_feats_solu = g_solu.edata['edge_attr']
+        node_feats_solu = self.gnn_solu(g_solu, node_feats_solu, edge_feats_solu)
+        graph_feats_solu = self.readout(g_solu, node_feats_solu)
+
+        node_feats_solv_a = g_solv_a.ndata['node_attr']
+        edge_feats_solv_a = g_solv_a.edata['edge_attr']
+        node_feats_solv_a = self.gnn_solv_a(g_solv_a, node_feats_solv_a, edge_feats_solv_a)
+        graph_feats_solv_a = self.readout(g_solv_a, node_feats_solv_a)
+
+        node_feats_solv_b = g_solv_b.ndata['node_attr']
+        edge_feats_solv_b = g_solv_b.edata['edge_attr']
+        node_feats_solv_b = self.gnn_solv_b(g_solv_b, node_feats_solv_b, edge_feats_solv_b)
+        graph_feats_solv_b = self.readout(g_solv_b, node_feats_solv_b)
+
+        return self.predict(torch.hstack([graph_feats_solu,graph_feats_solv_a,graph_feats_solv_b]))
+
+
 class nmrMPNN(nn.Module):
 
     def __init__(self, node_in_feats, edge_in_feats,
@@ -205,20 +263,6 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
     batch_size = train_loader.batch_size
 
     optimizer = Adam(net.parameters(), lr=1e-3,)# weight_decay=1e-10)
-    if False:
-        print("applying decreasing lr scheme across layers...")
-        optimizer = Adam(
-            [
-            {"params": net.project_node_feats.parameters(), "lr":1e-6},
-            {"params": net.gnn_layer.parameters(), "lr":1e-5},
-            {"params": net.gru.parameters(), "lr":1e-4},
-            {"params": net.readout.parameters(), "lr":1e-4},
-            {"params": net.predict.parameters(), "lr":1e-3},
-            ],
-            lr=1e-5,
-            weight_decay=1e-10,
-        )
-    #lr_scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=20, min_lr=1e-6, verbose=True)
 
     max_epochs = 500
     val_y = np.hstack([inst[-1] for inst in iter(val_loader.dataset)])
@@ -232,15 +276,17 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
         for batchidx, batchdata in enumerate(train_loader):
 
             optimizer.zero_grad()
-            inputs, n_nodes, y = batchdata
+            g_solu, g_solva, g_solvb, y = batchdata
             
             y = (y - train_y_mean) / train_y_std
             
-            inputs = inputs.to(cuda)
+            g_solu = g_solu.to(cuda)
+            g_solva = g_solva.to(cuda)
+            g_solvb = g_solvb.to(cuda)
             #n_nodes = n_nodes.to(cuda)
             y = y.to(cuda)
             
-            predictions = net(inputs,) # n_nodes, y)
+            predictions = net(g_solu,g_solva,g_solvb,) # n_nodes, y)
             
             loss = torch.abs(predictions.squeeze() - y).mean()
             
@@ -293,11 +339,12 @@ def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, 
         y_pred = []
         for batchidx, batchdata in enumerate(test_loader):
 
-            inputs, n_nodes, _ = batchdata
+            g_solu, g_solva, g_solvb, _ = batchdata
+            g_solu = g_solu.to(cuda)
+            g_solva = g_solva.to(cuda)
+            g_solvb = g_solvb.to(cuda)  
             
-            inputs = inputs.to(cuda)
-            
-            predictions = net(inputs,) # n_nodes, y)
+            predictions = net(g_solu,g_solva,g_solvb,) # n_nodes, y)
             y_pred.append(predictions.cpu().numpy())
 
     y_pred_inv_std = np.vstack(y_pred) * train_y_std + train_y_mean
@@ -313,11 +360,19 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     model_path = str(here / 'checkpoints' / 'model.pt')
     random_seed = 1
     #if not os.path.exists(model_path): os.makedirs(model_path)
-    data_pred = pd.DataFrame({"solute SMILES": smis, "solvent SMILES": ["CCO" for _ in smis], "conc": [0 for _ in smis]})
-    data_pred = GraphDataset(data_pred)
-    data = pd.read_csv(here /  "data" / "training_data_singleton.csv")
-
-    data = GraphDataset(data)
+    data_pred = pd.DataFrame({"solute SMILES": smis, })
+    data_pred["solvent SMILES a"] = "CO" # TODO
+    data_pred["solvent SMILES b"] = "CCCCCO" # TODO
+    data_pred["conc"] = 0
+    data_pred = SMDataset(data_pred)
+    #data_pred = pd.DataFrame({"solute SMILES": smis, "solvent SMILES": ["CCO" for _ in smis], "conc": [0 for _ in smis]})
+    #data_pred = GraphDataset(data_pred)
+    #data = pd.read_csv(here /  "data" / "training_data_singleton.csv")
+    #data = GraphDataset(data)
+    data = pd.read_csv(here /  "data" / "training_data_pairs.csv")
+    #data = data.sample(1000,random_state=123) # TODO: remove
+    data["conc"] = data["conc diff"]
+    data = SMDataset(data)
     train_set, val_set, test_set = split_dataset(data, data_split, shuffle=True, random_state=random_seed)
 
     train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, collate_fn=collate_reaction_graphs, drop_last=True)
@@ -329,9 +384,9 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     train_y_mean = np.mean(train_y.reshape(-1))
     train_y_std = np.std(train_y.reshape(-1))
 
-    node_dim = data.node_attr.shape[1]
-    edge_dim = data.edge_attr.shape[1]
-    net = MPNNPredictor(node_dim, edge_dim).cuda()
+    node_dim = data.mol_dict_solu["node_attr"].shape[1]
+    edge_dim = data.mol_dict_solu["edge_attr"].shape[1]
+    net = SMPredictor(node_dim, edge_dim).cuda()
 
     print('-- CONFIGURATIONS')
     print('--- data_size:', data.__len__())
@@ -361,4 +416,4 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
 
 if __name__ == "__main__":
 
-    run_for_smiles(["CCOCC"],experiment_name="solubility_in_water",)
+    run_for_smiles(["CCOCC"],experiment_name="differential_model",)
