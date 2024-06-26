@@ -106,6 +106,9 @@ class GraphDataset():
                 mol_dict['edge_attr'].append(edge_attr)
                 mol_dict['src'].append(src)
                 mol_dict['dst'].append(dst)
+
+            else:
+                assert False
             
             return mol_dict
 

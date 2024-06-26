@@ -370,6 +370,9 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     #data = pd.read_csv(here /  "data" / "training_data_singleton.csv")
     #data = GraphDataset(data)
     data = pd.read_csv(here /  "data" / "training_data_pairs.csv")
+    smiles_blacklist = ["[Na]Cl",]
+    for col in ["solute SMILES", "solvent SMILES a", "solvent SMILES b",]:
+        data = data[~data[col].isin(smiles_blacklist)]
     #data = data.sample(1000,random_state=123) # TODO: remove
     data["conc"] = data["conc diff"]
     data = SMDataset(data)
