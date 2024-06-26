@@ -351,6 +351,7 @@ def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, 
     return y_pred_inv_std
     
 
+from smal.all import add_split_by_col
 def run_for_smiles(smis:list[str],experiment_name:str,):
     data_split = [0.8, 0.1, 0.1]
     batch_size = 128
@@ -375,8 +376,18 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
         data = data[~data[col].isin(smiles_blacklist)]
     #data = data.sample(1000,random_state=123) # TODO: remove
     data["conc"] = data["conc diff"]
+    add_split_by_col(data,col="solute SMILES",amount_train=0.6,amount_test=0.2,amount_val=0.2,)
+    train_set = SMDataset(data[data["split"] == "train"])
+    val_set = SMDataset(data[data["split"] == "val"])
+    test_set = SMDataset(data[data["split"] == "test"])
     data = SMDataset(data)
-    train_set, val_set, test_set = split_dataset(data, data_split, shuffle=True, random_state=random_seed)
+
+    assert len(train_set)
+    assert len(val_set)
+    assert len(test_set)
+    
+    #data = SMDataset(data)
+    #train_set, val_set, test_set = split_dataset(data, data_split, shuffle=True, random_state=random_seed)
 
     train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, collate_fn=collate_reaction_graphs, drop_last=True)
     val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False, collate_fn=collate_reaction_graphs)
