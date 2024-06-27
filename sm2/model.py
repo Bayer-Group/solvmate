@@ -372,6 +372,10 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     #data = GraphDataset(data)
     data = pd.read_csv(here /  "data" / "training_data_pairs.csv")
     smiles_blacklist = ["[Na]Cl",]
+
+    data = data[data["source"] == "open_notebook"]
+    assert len(data)
+
     for col in ["solute SMILES", "solvent SMILES a", "solvent SMILES b",]:
         data = data[~data[col].isin(smiles_blacklist)]
     #data = data.sample(1000,random_state=123) # TODO: remove
@@ -430,4 +434,6 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
 
 if __name__ == "__main__":
 
-    run_for_smiles(["CCOCC"],experiment_name="differential_model",)
+    print(
+        run_for_smiles(["CCOCC"],experiment_name="differential_model",)
+    )
