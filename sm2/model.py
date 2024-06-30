@@ -351,6 +351,27 @@ def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, 
     return y_pred_inv_std
     
 
+
+
+def evaluate_ranking(df:pd.DataFrame,experiment_name:str,):
+    import seaborn as sns
+    from matplotlib import pyplot as plt
+    rs = []
+    for smi in df["solute SMILES"].unique():
+        g = df[df["solute SMILES"] == smi]
+        r = stats.spearmanr(g["conc"], g["conc_pred"])[0]
+        rs.append(r)
+
+    plt.clf()
+    sns.violinplot(rs)
+    plt.savefig(path_for_experiment_and_fle(experiment_name=experiment_name,fle_name="ranking_spearmanrs_nova_and_onb.svg"))
+    plt.clf()
+
+
+
+
+
+
 from smal.all import add_split_by_col
 def run_for_smiles(smis:list[str],experiment_name:str,):
     data_split = [0.8, 0.1, 0.1]
@@ -373,17 +394,22 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     data = pd.read_csv(here /  "data" / "training_data_pairs.csv")
     smiles_blacklist = ["[Na]Cl",]
 
-    data = data[data["source"] == "open_notebook"]
+    #data = data[data["source"] == "open_notebook"]
     assert len(data)
 
     for col in ["solute SMILES", "solvent SMILES a", "solvent SMILES b",]:
         data = data[~data[col].isin(smiles_blacklist)]
     #data = data.sample(1000,random_state=123) # TODO: remove
     data["conc"] = data["conc diff"]
-    add_split_by_col(data,col="solute SMILES",amount_train=0.6,amount_test=0.2,amount_val=0.2,)
-    train_set = SMDataset(data[data["split"] == "train"])
-    val_set = SMDataset(data[data["split"] == "val"])
-    test_set = SMDataset(data[data["split"] == "test"])
+    add_split_by_col(data,col="solute SMILES",amount_train=0.6,amount_test=0.2,amount_val=0.2,random_seed=123,)
+
+    df_test = data[data["split"] == "test"]
+    df_train = data[data["split"] == "train"]
+    df_val = data[data["split"] == "val"]
+
+    train_set = SMDataset(df_train)
+    val_set = SMDataset(df_val)
+    test_set = SMDataset(df_test)
     data = SMDataset(data)
 
     assert len(train_set)
@@ -426,6 +452,10 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     test_y = np.hstack([inst[-1] for inst in iter(test_loader.dataset)])
     test_y_pred = inference(net, test_loader, train_y_mean, train_y_std)
     test_mae = mean_absolute_error(test_y, test_y_pred)
+
+    df_test["conc_pred"] = test_y_pred
+
+    evaluate_ranking(df_test,experiment_name=experiment_name,)
 
     print('-- RESULT')
     print('--- test MAE', test_mae)
