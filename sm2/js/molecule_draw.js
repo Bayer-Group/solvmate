@@ -56,5 +56,9 @@ const setMolecule = function () {
 const showKetcher = function () {
     const vis = document.getElementById("ketcherModal").style.visibility;
     document.getElementById("ketcherModal").style.visibility = vis === "visible" ? "hidden" : "visible";
+
+    const bd = document.getElementById("modalOuter");
+    const bd_vis = bd.style.visibility;
+    bd.style.visibility = bd_vis === "visible" ? "hidden" : "visible";
 };
 
