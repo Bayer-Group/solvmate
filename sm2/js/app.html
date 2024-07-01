@@ -201,7 +201,7 @@
     <!--<div style="margin-top: 20px;">-->
     <button style=" display:inline-block;" class="primary" onclick="showKetcher()">draw API</button>
     <div style="display:inline-block;"> | </div>
-    <button style=" display:inline-block;" class="secondary" onclick="showKetcher()">solvents</button>
+    <button style=" display:inline-block;" class="secondary" onclick="showSolventsDialog()">solvents</button>
     <!--</div>-->
   </header>
   <main>
@@ -236,16 +236,21 @@
           }
         };
         const showKetcher = function () {
-
           const vis = document.getElementById("ketcherModal").style.visibility;
-
           document.getElementById("ketcherModal").style.visibility = vis === "visible" ? "hidden" : "visible";
         };
+
       </script>
+      <script src="/static/solvent_dialog.js"></script>
       <div class="modal" id="ketcherModal">
         <iframe id="ifKetcher" src="/static/ketcher/index.html" width="600px" height="600px"></iframe>
         <button onclick="setMolecule();" class="primary">OK</button>
         <button onclick="showKetcher();" class="secondary">Cancel</button>
+      </div>
+      <div class="modal" id="solventsDialogModal">
+        <div id="solvent-settings"></div>
+        <button onclick="commitSolventsDialog();" class="primary">OK</button>
+        <button onclick="showSolventsDialog();" class="secondary">Cancel</button>
       </div>
     </div>
   </main>
