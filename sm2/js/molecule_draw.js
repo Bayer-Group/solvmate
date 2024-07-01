@@ -1,3 +1,9 @@
+/* 
+    A pure-js implementation of molecule displaying functionality.
+    Inline display of molecules relies on rdkit.js SVG images,
+    while editing uses the statically bundled Ketcher instance.
+*/
+
 const draw_molecules = function () {
     Array.from(document.getElementsByClassName("mol")).forEach((element) => {
         var smiles = element.innerHTML;
@@ -21,3 +27,34 @@ window
     .catch(() => {
         // handle loading errors here...
     });
+
+const getKetcher = function (ketcherId) {
+
+    var ketcherFrame = document.getElementById(ketcherId);
+    var ketcher = null;
+
+    if ('contentDocument' in ketcherFrame)
+        ketcher = ketcherFrame.contentWindow.ketcher;
+    else // IE7
+        ketcher = document.frames[ketcherId].window.ketcher;
+
+    return ketcher;
+}
+const setMolecule = function () {
+    const ketcher = getKetcher('ifKetcher');
+    if (ketcher) {
+        ketcher.getSmiles().then(
+            smiles => {
+                API_SMILES = smiles;
+                update_model();
+                update_view();
+                showKetcher();
+            }
+        );
+    }
+};
+const showKetcher = function () {
+    const vis = document.getElementById("ketcherModal").style.visibility;
+    document.getElementById("ketcherModal").style.visibility = vis === "visible" ? "hidden" : "visible";
+};
+

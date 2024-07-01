@@ -64,19 +64,35 @@ const DEFAULT_SOLVENT_SETTINGS = [
 ];
 
 const _sp_prefix = "solvent-set-";
-var _sp_active = 0;
+
+var _sp_active = getCookie("last-sp-active");
+if (_sp_active)
+    _sp_active = Number(_sp_active);
+else
+    _sp_active = 0;
+
 const loadSolventsDialog = function () {
     const elt = document.getElementById("solvent-settings");
+    elt.innerHTML = "";
+    var buttonDiv = document.createElement('div');
+    buttonDiv.style.display = "bloack";
     for (var idx = 0; idx < 5; idx++) {
         var button = document.createElement('button');
         button.textContent = idx;
+        button.my_index = idx;
+        button.addEventListener('click', function (event) {
+            const button = event.target;
+            _sp_active = button.my_index;
+            loadSolventsDialog();
+        });
         if (idx == _sp_active) {
             button.classList.add("primary");
         } else {
             button.classList.add("secondary");
         }
-        elt.appendChild(button);
+        buttonDiv.appendChild(button);
     }
+    elt.appendChild(buttonDiv);
 
     const cookie_key = _sp_prefix + _sp_active;
     var cookie_val = getCookie(cookie_key);
@@ -90,6 +106,8 @@ const loadSolventsDialog = function () {
     textArea.cols = 30;
     textArea.value = cookie_val.split("|").join("\n");
     elt.appendChild(textArea);
+
+    setCookie('last-sp-active', _sp_active, 1000);
 };
 
 const commitSolventsDialog = function () {

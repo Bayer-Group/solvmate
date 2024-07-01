@@ -112,59 +112,8 @@
   <!-- ...other files and HTML tags... -->
   <!-- Load the RDKit JS file -->
   <script src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"></script>
-
-  <!-- Instantiate the WASM module. The inline script below could live elsewhere inside your application code. -->
-  <script>
-
-    const update_view = function (res) {
-      if (res === undefined) return;
-      console.log("Request complete! response:" + res);
-
-      var all_cells = "";
-      res.forEach(row => {
-        all_cells += `
-      <div>
-        <div class="mol">${row['solvent SMILES']}</div>
-        <div>${row['log S']}</div>
-      </div>
-      `;
-      });
-
-      document.getElementById("main-content").innerHTML += all_cells;
-      draw_molecules();
-      document.getElementById("status-message").innerText = "";
-    };
-    const update_plot_view = function (res) {
-      if (res === undefined) return;
-      console.log("Request complete! response:" + res);
-      document.getElementById("main-content").innerHTML += res["svg"];
-      draw_molecules();
-      document.getElementById("status-message").innerText = "";
-    };
-    var API_SMILES = "";
-    const update_model = function () {
-      document.getElementById("status-message").innerText = "calculating ...";
-      if (false) {
-        fetch("/rank-by-solubility", {
-          method: "POST",
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": ["CO", "CCO", "C1CCCCC1",], })
-        }).then(res => res.json()).then(
-          res => update_view(res)
-        );
-      } else {
-        fetch("/plot-rank-by-solubility", {
-          method: "POST",
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": ["CO", "CCO", "C1CCCCC1",], })
-        }).then(res => res.json()).then(
-          res => update_plot_view(res)
-        );
-      }
-    };
-  </script>
-  <script src="/static/molecule_draw.js">
-  </script>
+  <script src="/static/controller.js"></script>
+  <script src="/static/molecule_draw.js"></script>
 </head>
 
 <body>
@@ -187,36 +136,6 @@
       <!--<h1 class="label">Hydrolytic Stability</h1>-->
       <!--<div style="max-height: 50vh; overflow: scroll;">-->
       <script>
-        const getKetcher = function (ketcherId) {
-
-          var ketcherFrame = document.getElementById(ketcherId);
-          var ketcher = null;
-
-          if ('contentDocument' in ketcherFrame)
-            ketcher = ketcherFrame.contentWindow.ketcher;
-          else // IE7
-            ketcher = document.frames[ketcherId].window.ketcher;
-
-          return ketcher;
-        }
-        const setMolecule = function () {
-          const ketcher = getKetcher('ifKetcher');
-          if (ketcher) {
-            ketcher.getSmiles().then(
-              smiles => {
-                API_SMILES = smiles;
-                update_model();
-                update_view();
-                showKetcher();
-              }
-            );
-          }
-        };
-        const showKetcher = function () {
-          const vis = document.getElementById("ketcherModal").style.visibility;
-          document.getElementById("ketcherModal").style.visibility = vis === "visible" ? "hidden" : "visible";
-        };
-
       </script>
       <script src="/static/solvent_dialog.js"></script>
       <div class="modal" id="ketcherModal">

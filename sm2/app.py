@@ -40,7 +40,7 @@ async def plot_rank_by_solubility(data:dict):
     dfo["solvents"] = solvents
     
     plt.clf()
-    sns.boxplot(data=dfo,x="log S",y="solvents")
+    sns.barplot(data=dfo,x="log S",y="solvents")
     buf = io.StringIO()
     plt.tight_layout(w_pad=2,h_pad=2)
     plt.savefig(buf,format="svg")
