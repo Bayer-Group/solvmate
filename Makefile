@@ -1,4 +1,7 @@
 
+run2:
+	fastapi dev --port 8890 --host 0.0.0.0 sm2/app.py
+
 run:
 	python src/solvmate/app/app.py 
 

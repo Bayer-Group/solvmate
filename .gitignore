@@ -2,6 +2,7 @@
 *.pyc
 *.csv
 *.pkl
+*.pt
 *.xlsx
 .opsin_cache.json
 *.

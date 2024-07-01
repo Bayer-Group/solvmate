@@ -1,4 +1,5 @@
 import argparse
+import joblib
 import pandas as pd
 from pathlib import Path
 from dataset import GraphDataset, SMDataset
@@ -380,6 +381,7 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
 
     here = Path(__file__).parent
     model_path = str(here / 'checkpoints' / 'model.pt')
+    model_metadata_path = str(here / 'checkpoints' / 'model_metadata.pkl')
     random_seed = 1
     #if not os.path.exists(model_path): os.makedirs(model_path)
     data_pred = pd.DataFrame({"solute SMILES": smis, })
@@ -438,6 +440,8 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     print('--- use_pretrain:', use_pretrain)
     print('--- model_path:', model_path)
 
+    joblib.dump({"train_y_mean": train_y_mean, "train_y_std": train_y_std}, model_metadata_path,)
+    assert False
 
     # training
     if not use_pretrain or not Path(model_path).exists():
@@ -446,6 +450,7 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     else:
         print('-- LOAD SAVED MODEL')
         net.load_state_dict(torch.load(model_path))
+
 
 
     # inference
@@ -459,6 +464,54 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
 
     print('-- RESULT')
     print('--- test MAE', test_mae)
+    return inference(net,pred_loader, train_y_mean, train_y_std)
+
+
+def run_predictions_for_solvents(solute_smiles:list[str], solvents:list[str],):
+    solvent_smiles_a = [solv_a for solv_a in solvents for solv_b in solvents]
+    solvent_smiles_b = [solv_b for solv_a in solvents for solv_b in solvents]
+
+    if isinstance(solute_smiles,str):
+        solute_smiles = [solute_smiles for _ in solvent_smiles_a]
+
+    log_s = run_predictions_for_smiles_pairs(solute_smiles=solute_smiles,solvent_smiles_a=solvent_smiles_a,solvent_smiles_b=solvent_smiles_b,)
+    dfp = pd.DataFrame({
+        "solvent SMILES a": solvent_smiles_a,
+        "solvent SMILES b": solvent_smiles_b,
+        "log S": list(log_s.reshape(-1)),
+        "solute SMILES": solute_smiles,
+    })
+    dfo = []
+    for solu in dfp["solute SMILES"].unique():
+        g_solu = dfp[dfp["solute SMILES"] == solu]
+        for solv in dfp["solvent SMILES b"].unique():
+            g_solu_solv = g_solu[g_solu["solvent SMILES b"] == solv]
+            dfo.append({"solute SMILES": solu, "solvent SMILES": solv, "log S": g_solu_solv["log S"].sum(),})
+    
+    dfo = pd.DataFrame(dfo)
+    return dfo
+        
+
+
+def run_predictions_for_smiles_pairs(solute_smiles:list[str], solvent_smiles_a:list[str], solvent_smiles_b:list[str],):
+    batch_size = 128
+    here = Path(__file__).parent
+    model_path = str(here / 'checkpoints' / 'model.pt')
+    model_metadata_path = str(here / 'checkpoints' / 'model_metadata.pkl')
+    data_pred = pd.DataFrame({"solute SMILES": solute_smiles, "solvent SMILES a": solvent_smiles_a, "solvent SMILES b": solvent_smiles_b,})
+    data_pred["conc"] = 0
+    data_pred = SMDataset(data_pred)
+
+    pred_loader = DataLoader(dataset=data_pred, batch_size=batch_size, shuffle=False, collate_fn=collate_reaction_graphs)
+
+    node_dim = data_pred.mol_dict_solu["node_attr"].shape[1]
+    edge_dim = data_pred.mol_dict_solu["edge_attr"].shape[1]
+    net = SMPredictor(node_dim, edge_dim).cuda()
+    net.load_state_dict(torch.load(model_path))
+
+    metadata = joblib.load(model_metadata_path,)
+    train_y_mean = metadata["train_y_mean"]
+    train_y_std = metadata["train_y_std"]
     return inference(net,pred_loader, train_y_mean, train_y_std)
 
 

@@ -1,0 +1,227 @@
+<html>
+
+<head>
+  <style>
+    body {
+      /* centers horizontally */
+      /* centers vertically */
+      /* full height of the viewport */
+      /* border: 1px solid #000; */
+      /* just for visual reference */
+    }
+
+    #main-content {
+      width: 100%;
+    }
+
+
+    button {
+      padding-top: 10px;
+      padding-bottom: 10px;
+      padding-left: 20px;
+      padding-right: 20px;
+      font-weight: bold;
+      background-color: rgb(62, 62, 62);
+      color: white;
+      font-size: 20px;
+      border-radius: 15px;
+    }
+
+    .primary {
+      background-color: rgb(85, 85, 255);
+    }
+
+    .modal {
+      position: fixed;
+      top: calc(50% - 600px);
+      left: calc(50% - 300px);
+      z-index: 99999;
+      visibility: hidden;
+      background-color: rgba(240, 240, 240, 0.936);
+      padding: 100px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: row;
+      gap: 50px;
+    }
+
+    .modalOuter {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 99998;
+      background-color: red;
+      visibility: hidden;
+    }
+
+    .grid-container {
+      display: grid;
+      column-gap: 0px;
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      background-color: #4d4d4d;
+      color: white;
+      padding: 1em;
+      /*text-align: center;*/
+    }
+
+    main {
+      flex: 1;
+      padding: 1em;
+      background-color: #f0f0f0;
+    }
+
+    footer {
+      background-color: #4d4d4d;
+      color: white;
+      text-align: center;
+      padding: 1em;
+    }
+  </style>
+  <!-- ...other files and HTML tags... -->
+  <!-- Load the RDKit JS file -->
+  <script src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"></script>
+
+  <!-- Instantiate the WASM module. The inline script below could live elsewhere inside your application code. -->
+  <script>
+
+    const update_view = function (res) {
+      if (res === undefined) return;
+      console.log("Request complete! response:" + res);
+
+      var all_cells = "";
+      res.forEach(row => {
+        all_cells += `
+      <div>
+        <div class="mol">${row['solvent SMILES']}</div>
+        <div>${row['log S']}</div>
+      </div>
+      `;
+      });
+
+      document.getElementById("main-content").innerHTML += all_cells;
+      draw_molecules();
+      document.getElementById("status-message").innerText = "";
+    };
+    var API_SMILES = "";
+    const update_model = function () {
+      document.getElementById("status-message").innerText = "calculating ...";
+      fetch("/rank-by-solubility", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": ["CO", "CCO", "C1CCCCC1",], })
+      }).then(res => res.json()).then(
+        res => update_view(res)
+      );
+    };
+
+    const draw_molecules = function () {
+      Array.from(document.getElementsByClassName("mol")).forEach((element) => {
+        var smiles = element.innerHTML;
+        var mol = window.RDKit.get_mol(smiles);
+        var dest = element;
+        var svg = mol.get_svg();
+        dest.innerHTML = "<div class='drawing'>" + svg + "</div>";
+      });
+    };
+    window
+      .initRDKitModule()
+      .then(function (RDKit) {
+        console.log("RDKit version: " + RDKit.version());
+        window.RDKit = RDKit;
+        draw_molecules();
+        /**
+         * The RDKit module is now loaded.
+         * You can use it anywhere.
+         */
+      })
+      .catch(() => {
+        // handle loading errors here...
+      });
+  </script>
+  <!-- ...your application code goes here... -->
+</head>
+
+<body>
+  <!--
+  <div>Here is the output:</div>
+  <div id="example-1-output"></div>
+  -->
+  <header>
+    <img width="300px" src="/static/hydro_banner.svg">
+    <!--<img width="300px" src="/static/stablab_tool_explanation.svg">-->
+    <div id="status-message"></div>
+    <div style="margin-top: 20px;">
+      <button style="background-color: #2b519aff;" onclick="showKetcher()">draw API</button>
+    </div>
+  </header>
+  <main>
+    <div id="main-content" class="grid-container">
+      <!--<h1 class="label">Hydrolytic Stability</h1>-->
+      <!--<div style="max-height: 50vh; overflow: scroll;">-->
+      <script>
+        const getKetcher = function (ketcherId) {
+
+          var ketcherFrame = document.getElementById(ketcherId);
+          var ketcher = null;
+
+          if ('contentDocument' in ketcherFrame)
+            ketcher = ketcherFrame.contentWindow.ketcher;
+          else // IE7
+            ketcher = document.frames[ketcherId].window.ketcher;
+
+          return ketcher;
+        }
+        const setMolecule = function () {
+          const ketcher = getKetcher('ifKetcher');
+          if (ketcher) {
+            ketcher.getSmiles().then(
+              smiles => {
+                API_SMILES = smiles;
+                update_model();
+                update_view();
+                showKetcher();
+              }
+            );
+          }
+        };
+        const showKetcher = function () {
+
+          const vis = document.getElementById("ketcherModal").style.visibility;
+
+          document.getElementById("ketcherModal").style.visibility = vis === "visible" ? "hidden" : "visible";
+        };
+      </script>
+      <div class="modal" id="ketcherModal">
+        <iframe id="ifKetcher" src="/static/ketcher/index.html" width="600px" height="600px"></iframe>
+        <button onclick="setMolecule();" class="primary">OK</button>
+        <button onclick="showKetcher();" class="primary">Cancel</button>
+      </div>
+    </div>
+  </main>
+  <footer>
+
+  </footer>
+</body>
+
+</html>
