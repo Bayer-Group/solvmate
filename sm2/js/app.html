@@ -134,16 +134,33 @@
       draw_molecules();
       document.getElementById("status-message").innerText = "";
     };
+    const update_plot_view = function (res) {
+      if (res === undefined) return;
+      console.log("Request complete! response:" + res);
+      document.getElementById("main-content").innerHTML += res["svg"];
+      draw_molecules();
+      document.getElementById("status-message").innerText = "";
+    };
     var API_SMILES = "";
     const update_model = function () {
       document.getElementById("status-message").innerText = "calculating ...";
-      fetch("/rank-by-solubility", {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": ["CO", "CCO", "C1CCCCC1",], })
-      }).then(res => res.json()).then(
-        res => update_view(res)
-      );
+      if (false) {
+        fetch("/rank-by-solubility", {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": ["CO", "CCO", "C1CCCCC1",], })
+        }).then(res => res.json()).then(
+          res => update_view(res)
+        );
+      } else {
+        fetch("/plot-rank-by-solubility", {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": ["CO", "CCO", "C1CCCCC1",], })
+        }).then(res => res.json()).then(
+          res => update_plot_view(res)
+        );
+      }
     };
 
     const draw_molecules = function () {
