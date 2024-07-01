@@ -24,11 +24,16 @@
       background-color: rgb(62, 62, 62);
       color: white;
       font-size: 20px;
-      border-radius: 15px;
+      border: 0px;
+      /* border-radius: 15px; */
     }
 
     .primary {
       background-color: #1f5fe5ff;
+    }
+
+    .secondary {
+      background-color: #4c6f7fff;
     }
 
     .modal {
@@ -177,9 +182,9 @@
     <img style="display:inline-block;" width="300px" src="/static/hydro_banner.svg">
     <!--<img width="300px" src="/static/stablab_tool_explanation.svg">-->
     <!--<div style="margin-top: 20px;">-->
-    <button style=" display:inline-block; background-color: #1f5fe5ff;" onclick="showKetcher()">draw API</button>
+    <button style=" display:inline-block;" class="primary" onclick="showKetcher()">draw API</button>
     <div style="display:inline-block;"> | </div>
-    <button style=" display:inline-block; background-color: #4c6f7fff;" onclick="showKetcher()">solvents</button>
+    <button style=" display:inline-block;" class="secondary" onclick="showKetcher()">solvents</button>
     <!--</div>-->
   </header>
   <main>
@@ -223,7 +228,7 @@
       <div class="modal" id="ketcherModal">
         <iframe id="ifKetcher" src="/static/ketcher/index.html" width="600px" height="600px"></iframe>
         <button onclick="setMolecule();" class="primary">OK</button>
-        <button onclick="showKetcher();" class="primary">Cancel</button>
+        <button onclick="showKetcher();" class="secondary">Cancel</button>
       </div>
     </div>
   </main>
