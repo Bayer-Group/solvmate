@@ -10,6 +10,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 from sm2.model import run_predictions_for_solvents
+from solvmate.ccryst.solvent import solvent_mixture_iupac_to_smiles
 
 
 app = FastAPI()
@@ -31,13 +32,32 @@ async def rank_by_solubility(data:dict):
     dfo = dfo.sort_values("log S",ascending=False,)
     return dfo.to_dict("records")
 
+def _safe_from_smiles(smi):
+    try:
+        return Chem.CanonSmiles(smi)
+    except:
+        return None
+
+def _parse_in_order(funs, txt):
+    for fun in funs:
+        if fun(txt):
+            rslt = fun(txt)
+            if isinstance(rslt,list):
+                return ".".join(rslt)
+            else:
+                return rslt
+    return None
+
 @app.post("/plot-rank-by-solubility/")
 async def plot_rank_by_solubility(data:dict):
     solute_smiles = data["solute SMILES"]
     solvents = data["solvents"]
-    dfo = run_predictions_for_solvents(solute_smiles=solute_smiles,solvents=solvents,)
+
+    solvent_smis = [_parse_in_order([solvent_mixture_iupac_to_smiles,_safe_from_smiles], solv) for solv in solvents]
+    solvent_smi_to_name = {smi:nme for smi,nme in zip(solvent_smis,solvents)}
+    dfo = run_predictions_for_solvents(solute_smiles=solute_smiles,solvents=solvent_smis,)
     dfo = dfo.sort_values("log S",ascending=False,)
-    dfo["solvents"] = solvents
+    dfo["solvents"] = dfo["solvent SMILES"].map(solvent_smi_to_name)
     
     plt.clf()
     sns.barplot(data=dfo,x="log S",y="solvents")

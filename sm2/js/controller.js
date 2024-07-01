@@ -30,7 +30,7 @@ const update_model = function () {
         fetch("/rank-by-solubility", {
             method: "POST",
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": ["CO", "CCO", "C1CCCCC1",], })
+            body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": get_selected_solvents(), })
         }).then(res => res.json()).then(
             res => update_view(res)
         );
@@ -38,7 +38,7 @@ const update_model = function () {
         fetch("/plot-rank-by-solubility", {
             method: "POST",
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": ["CO", "CCO", "C1CCCCC1",], })
+            body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": get_selected_solvents(), })
         }).then(res => res.json()).then(
             res => update_plot_view(res)
         );

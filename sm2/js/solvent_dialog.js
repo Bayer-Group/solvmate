@@ -75,7 +75,7 @@ const loadSolventsDialog = function () {
     const elt = document.getElementById("solvent-settings");
     elt.innerHTML = "";
     var buttonDiv = document.createElement('div');
-    buttonDiv.style.display = "bloack";
+    buttonDiv.style.display = "block";
     for (var idx = 0; idx < 5; idx++) {
         var button = document.createElement('button');
         button.textContent = idx;
@@ -101,7 +101,7 @@ const loadSolventsDialog = function () {
         cookie_val = DEFAULT_SOLVENT_SETTINGS[_sp_active];
     }
     var textArea = document.createElement('textarea');
-    textArea.id = 'ta-' + cookie_key;
+    textArea.id = 'textarea-solvent-setting';
     textArea.rows = 10;
     textArea.cols = 30;
     textArea.value = cookie_val.split("|").join("\n");
@@ -111,4 +111,12 @@ const loadSolventsDialog = function () {
 };
 
 const commitSolventsDialog = function () {
+    const ta = document.getElementById('textarea-solvent-setting');
+    setCookie(_sp_prefix + _sp_active, ta.value.split("\n").join("|"), 1000);
+    commitSolventsDialog();
+};
+
+
+const get_selected_solvents = function () {
+    return Array.from(getCookie(_sp_prefix + _sp_active).split("|"));
 };

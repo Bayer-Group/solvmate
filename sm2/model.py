@@ -396,7 +396,7 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     data = pd.read_csv(here /  "data" / "training_data_pairs.csv")
     smiles_blacklist = ["[Na]Cl",]
 
-    #data = data[data["source"] == "open_notebook"]
+    data = data[data["source"] == "open_notebook"]
     assert len(data)
 
     for col in ["solute SMILES", "solvent SMILES a", "solvent SMILES b",]:
@@ -441,7 +441,6 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     print('--- model_path:', model_path)
 
     joblib.dump({"train_y_mean": train_y_mean, "train_y_std": train_y_std}, model_metadata_path,)
-    assert False
 
     # training
     if not use_pretrain or not Path(model_path).exists():
@@ -467,6 +466,51 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     return inference(net,pred_loader, train_y_mean, train_y_std)
 
 
+
+def _least_squares_solution(g_solu:pd.DataFrame,):
+    """
+    Orders the given per-solute dataframe by applying least squares
+    procedure on the pairwise differences.
+
+    >>> order = "abcd"
+    >>> g = pd.DataFrame([{"solvent SMILES a": val_a, "solvent SMILES b": val_b, "conc": order.index(val_b) - order.index(val_a)} for val_a in order for val_b in order])
+    >>> _least_squares_solution(g) #["conc"].tolist() # doctest: +NORMALIZE_WHITESPACE
+        solvent SMILES  conc
+    3              d   1.5
+    2              c   0.5
+    1              b  -0.5
+    0              a  -1.5
+    
+    """
+    solv_to_idx = list(sorted(set(g_solu["solvent SMILES b"].tolist())))
+    solv_to_idx = {smi: idx for idx,smi in enumerate(solv_to_idx)}
+    N = len(solv_to_idx)
+    M = []
+    b = []
+
+    for _,row in g_solu.iterrows():
+        m = np.zeros(N)
+        ia = solv_to_idx[row["solvent SMILES a"]]
+        ib = solv_to_idx[row["solvent SMILES b"]]
+        m[ia] = - 1
+        m[ib] = 1
+        
+        b.append(row["conc"])
+        M.append(m)
+
+    M = np.vstack(M)
+    solution = np.linalg.lstsq(M, b, rcond=None)[0]
+    #g_solu["absolute_ordering"] = g_solu["solvent SMILES b"].apply(lambda smi: solution[solv_to_idx[smi]])
+
+    return pd.DataFrame([{
+        "solvent SMILES": smi,
+        "conc": solution[idx],
+    }
+        for smi,idx in solv_to_idx.items()
+    ]
+    ).sort_values("conc",ascending=False,)
+
+
 def run_predictions_for_solvents(solute_smiles:list[str], solvents:list[str],):
     solvent_smiles_a = [solv_a for solv_a in solvents for solv_b in solvents]
     solvent_smiles_b = [solv_b for solv_a in solvents for solv_b in solvents]
@@ -484,11 +528,16 @@ def run_predictions_for_solvents(solute_smiles:list[str], solvents:list[str],):
     dfo = []
     for solu in dfp["solute SMILES"].unique():
         g_solu = dfp[dfp["solute SMILES"] == solu]
-        for solv in dfp["solvent SMILES b"].unique():
-            g_solu_solv = g_solu[g_solu["solvent SMILES b"] == solv]
-            dfo.append({"solute SMILES": solu, "solvent SMILES": solv, "log S": g_solu_solv["log S"].sum(),})
+        g_solu["conc"] = g_solu["log S"]
+        g_rank = _least_squares_solution(g_solu)
+        g_rank["log S"] = g_rank["conc"]
+        g_rank["solute SMILES"] = solu
+        dfo.append(g_rank)
+        #for solv in dfp["solvent SMILES b"].unique():
+        # g_solu_solv = g_solu[g_solu["solvent SMILES b"] == solv]
+        # dfo.append({"solute SMILES": solu, "solvent SMILES": solv, "log S": g_solu_solv["log S"].sum(),})
     
-    dfo = pd.DataFrame(dfo)
+    dfo = pd.concat(dfo)
     return dfo
         
 
