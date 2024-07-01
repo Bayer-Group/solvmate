@@ -28,6 +28,14 @@
       /* border-radius: 15px; */
     }
 
+    .buttongroup {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: row;
+      gap: 5px;
+    }
+
     .primary {
       background-color: #1f5fe5ff;
     }
@@ -36,10 +44,12 @@
       background-color: #4c6f7fff;
     }
 
-    .modal {
+    .ketchermodal {
       position: fixed;
-      top: calc(50% - 600px);
-      left: calc(50% - 300px);
+      top: calc(50% - 300px);
+      left: calc(50% - 450px);
+      width: 900px;
+      height: 600px;
       z-index: 99999;
       visibility: hidden;
       background-color: rgba(240, 240, 240, 0.936);
@@ -51,14 +61,36 @@
       gap: 50px;
     }
 
-    .modalOuter {
+    .modal {
+      position: fixed;
+      top: calc(50% - 300px);
+      left: calc(50% - 300px);
+      width: 600px;
+      height: 600px;
+      z-index: 99999;
+      visibility: hidden;
+      background-color: white;
+      border-color: rgb(13, 44, 58);
+      border-radius: 10px;
+      border-style: solid;
+      border-top-width: 10px;
+      border-bottom-width: 10px;
+      padding: 100px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: row;
+      gap: 50px;
+    }
+
+    #modalOuter {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
       z-index: 99998;
-      background-color: red;
+      background-color: #ffffff80;
       visibility: hidden;
     }
 
@@ -138,17 +170,22 @@
       <script>
       </script>
       <script src="/static/solvent_dialog.js"></script>
-      <div class="modal" id="ketcherModal">
+      <div class="ketchermodal" id="ketcherModal">
         <iframe id="ifKetcher" src="/static/ketcher/index.html" width="600px" height="600px"></iframe>
-        <button onclick="setMolecule();" class="primary">OK</button>
-        <button onclick="showKetcher();" class="secondary">Cancel</button>
+        <div class="buttongroup">
+          <button onclick="setMolecule();" class="primary">OK</button>
+          <button onclick="showKetcher();" class="secondary">Cancel</button>
+        </div>
       </div>
       <div class="modal" id="solventsDialogModal">
         <div id="solvent-settings"></div>
-        <button onclick="commitSolventsDialog();" class="primary">OK</button>
-        <button onclick="showSolventsDialog();" class="secondary">Cancel</button>
+        <div class="buttongroup">
+          <button onclick="commitSolventsDialog();" class="primary">OK</button>
+          <button onclick="showSolventsDialog();" class="secondary">Cancel</button>
+        </div>
       </div>
     </div>
+    <div id="modalOuter"></div>
   </main>
   <footer>
 

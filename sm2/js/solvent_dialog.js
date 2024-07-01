@@ -28,6 +28,10 @@ const showSolventsDialog = function () {
     loadSolventsDialog();
     const vis = document.getElementById("solventsDialogModal").style.visibility;
     document.getElementById("solventsDialogModal").style.visibility = vis === "visible" ? "hidden" : "visible";
+
+    const bd = document.getElementById("modalOuter");
+    const bd_vis = bd.style.visibility;
+    bd.style.visibility = bd_vis === "visible" ? "hidden" : "visible";
 };
 
 function setCookie(name, value, days) {
@@ -113,7 +117,7 @@ const loadSolventsDialog = function () {
 const commitSolventsDialog = function () {
     const ta = document.getElementById('textarea-solvent-setting');
     setCookie(_sp_prefix + _sp_active, ta.value.split("\n").join("|"), 1000);
-    commitSolventsDialog();
+    showSolventsDialog();
 };
 
 
