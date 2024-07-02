@@ -1,187 +1,37 @@
 <html>
 
 <head>
-  <style>
-    body {
-      /* centers horizontally */
-      /* centers vertically */
-      /* full height of the viewport */
-      /* border: 1px solid #000; */
-      /* just for visual reference */
-    }
-
-    #main-content {
-      width: 100%;
-    }
-
-
-    button {
-      padding-top: 10px;
-      padding-bottom: 10px;
-      padding-left: 20px;
-      padding-right: 20px;
-      font-weight: bold;
-      background-color: rgb(62, 62, 62);
-      color: white;
-      font-size: 20px;
-      border: 0px;
-      /* border-radius: 15px; */
-    }
-
-    .buttongroup {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: row;
-      gap: 5px;
-    }
-
-    .primary {
-      background-color: #1f5fe5ff;
-    }
-
-    .secondary {
-      background-color: #4c6f7fff;
-    }
-
-    .ketchermodal {
-      position: fixed;
-      top: calc(50% - 300px);
-      left: calc(50% - 450px);
-      width: 900px;
-      height: 600px;
-      z-index: 99999;
-      visibility: hidden;
-      background-color: rgba(240, 240, 240, 0.936);
-      padding: 100px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: row;
-      gap: 50px;
-    }
-
-    .modal {
-      position: fixed;
-      top: calc(50% - 300px);
-      left: calc(50% - 300px);
-      width: 600px;
-      height: 600px;
-      z-index: 99999;
-      visibility: hidden;
-      background-color: white;
-      border-color: rgb(13, 44, 58);
-      border-radius: 10px;
-      border-style: solid;
-      border-top-width: 10px;
-      border-bottom-width: 10px;
-      padding: 100px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: row;
-      gap: 50px;
-    }
-
-    #modalOuter {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 99998;
-      background-color: #ffffff80;
-      visibility: hidden;
-    }
-
-    .grid-container {
-      display: grid;
-      column-gap: 0px;
-      grid-template-columns: repeat(3, 1fr);
-    }
-
-
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-
-    header {
-      background-color: #364e59ff;
-      color: white;
-      padding: 1em;
-
-      display: flex;
-      gap: 50px;
-      align-items: center;
-      /*justify-content: center;*/
-
-      /*text-align: center;*/
-    }
-
-    main {
-      flex: 1;
-      padding: 1em;
-      background-color: #f0f0f0;
-    }
-
-    footer {
-      background-color: #364e59ff;
-      color: white;
-      text-align: center;
-      padding: 1em;
-    }
-  </style>
-  <!-- ...other files and HTML tags... -->
-  <!-- Load the RDKit JS file -->
+  <link rel="stylesheet" href="/static/style.css">
   <script src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"></script>
   <script src="/static/controller.js"></script>
   <script src="/static/molecule_draw.js"></script>
+  <script src="/static/default_solvent_settings.js"></script>
+  <script src="/static/solvent_dialog.js"></script>
 </head>
 
 <body>
-  <!--
-  <div>Here is the output:</div>
-  <div id="example-1-output"></div>
-  -->
   <header>
     <img style="display:inline-block;" width="300px" src="/static/hydro_banner.svg">
-    <!--<img width="300px" src="/static/stablab_tool_explanation.svg">-->
-    <!--<div style="margin-top: 20px;">-->
     <button style=" display:inline-block;" class="primary" onclick="showKetcher()">draw API</button>
     <div style="display:inline-block;"> | </div>
     <button style=" display:inline-block;" class="secondary" onclick="showSolventsDialog()">solvents</button>
-    <!--</div>-->
   </header>
   <main>
     <div style="display:inline-block;" id="status-message"></div>
     <div id="main-content" class="grid-container">
-      <!--<h1 class="label">Hydrolytic Stability</h1>-->
-      <!--<div style="max-height: 50vh; overflow: scroll;">-->
-      <script src="/static/default_solvent_settings.js"></script>
-      <script src="/static/solvent_dialog.js"></script>
-      <div class="ketchermodal" id="ketcherModal">
-        <iframe id="ifKetcher" src="/static/ketcher/index.html" width="600px" height="600px"></iframe>
-        <div class="buttongroup">
-          <button onclick="setMolecule();" class="primary">OK</button>
-          <button onclick="showKetcher();" class="secondary">Cancel</button>
-        </div>
+    </div>
+    <div class="ketchermodal" id="ketcherModal">
+      <iframe id="ifKetcher" src="/static/ketcher/index.html" width="600px" height="600px"></iframe>
+      <div class="buttongroup">
+        <button onclick="setMolecule();" class="primary">OK</button>
+        <button onclick="showKetcher();" class="secondary">Cancel</button>
       </div>
-      <div class="modal" id="solventsDialogModal">
-        <div id="solvent-settings"></div>
-        <div class="buttongroup">
-          <button onclick="commitSolventsDialog();" class="primary">OK</button>
-          <button onclick="showSolventsDialog();" class="secondary">Cancel</button>
-        </div>
+    </div>
+    <div class="modal" id="solventsDialogModal">
+      <div id="solvent-settings"></div>
+      <div class="buttongroup">
+        <button onclick="commitSolventsDialog();" class="primary">OK</button>
+        <button onclick="showSolventsDialog();" class="secondary">Cancel</button>
       </div>
     </div>
     <div id="modalOuter"></div>

@@ -26,21 +26,12 @@ const update_plot_view = function (res) {
 var API_SMILES = "";
 const update_model = function () {
     document.getElementById("status-message").innerText = "calculating ...";
-    if (false) {
-        fetch("/rank-by-solubility", {
-            method: "POST",
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": get_selected_solvents(), })
-        }).then(res => res.json()).then(
-            res => update_view(res)
-        );
-    } else {
-        fetch("/plot-rank-by-solubility", {
-            method: "POST",
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": get_selected_solvents(), })
-        }).then(res => res.json()).then(
-            res => update_plot_view(res)
-        );
-    }
+
+    fetch("/plot-rank-by-solubility", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": get_selected_solvents(), })
+    }).then(res => res.json()).then(
+        res => update_plot_view(res)
+    );
 };
