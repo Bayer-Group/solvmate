@@ -511,12 +511,12 @@ def _least_squares_solution(g_solu:pd.DataFrame,):
     ).sort_values("conc",ascending=False,)
 
 
-def run_predictions_for_solvents(solute_smiles:list[str], solvents:list[str],):
+def run_predictions_for_solvents(solute_smiles:str, solvents:list[str],):
     solvent_smiles_a = [solv_a for solv_a in solvents for solv_b in solvents]
     solvent_smiles_b = [solv_b for solv_a in solvents for solv_b in solvents]
 
-    if isinstance(solute_smiles,str):
-        solute_smiles = [solute_smiles for _ in solvent_smiles_a]
+    assert isinstance(solute_smiles,str)
+    solute_smiles = [solute_smiles for _ in solvent_smiles_a]
 
     log_s = run_predictions_for_smiles_pairs(solute_smiles=solute_smiles,solvent_smiles_a=solvent_smiles_a,solvent_smiles_b=solvent_smiles_b,)
     dfp = pd.DataFrame({

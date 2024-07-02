@@ -12,3 +12,4 @@ cosmonaut/data/
 archive/
 figures/
 .auth.json
+sm2/bayer_eval.py

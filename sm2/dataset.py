@@ -10,6 +10,7 @@ from rdkit import Chem
 import numpy as np
 import os
 from rdkit import Chem, RDConfig, rdBase
+from rdkit.Chem import PandasTools
 from rdkit.Chem import AllChem, ChemicalFeatures
 import numpy as np
 import os
