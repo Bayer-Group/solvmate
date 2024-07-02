@@ -1,4 +1,4 @@
-const ess_solvents = ```
+const _ess_solvents = `
 n-Heptan
 Cyclohexan
 Diisopropylether
@@ -14,8 +14,9 @@ Methanol
 Wasser
 Dichlormethan
 Isopropanol/Wasser 1/1
-```;
-const all_solvents = ```
+`;
+
+const _all_solvents = `
 cyclohexane
 octane
 heptane
@@ -75,4 +76,12 @@ methanol
 tetrahydrofuran
 dimethyl sulfoxide
 dimethylformamide
-```;
+`;
+
+const DEFAULT_SOLVENT_SETTINGS = [
+    _ess_solvents.trim().split("\n").join("|"),
+    _all_solvents.trim().split("\n").join("|"),
+    "",
+    "",
+    ""
+];

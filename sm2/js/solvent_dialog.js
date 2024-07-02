@@ -34,38 +34,43 @@ const showSolventsDialog = function () {
     bd.style.visibility = bd_vis === "visible" ? "hidden" : "visible";
 };
 
+const _USE_COOKIES = false;
 function setCookie(name, value, days) {
-    let expires = "";
-    if (days) {
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        expires = "; expires=" + date.toUTCString();
+
+    if (_USE_COOKIES) {
+        let expires = "";
+        if (days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
     }
-    document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    else {
+        localStorage.setItem(name, value);
+    }
 }
 
 function getCookie(name) {
-    const nameEQ = name + "=";
-    const ca = document.cookie.split(';');
-    for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+
+    if (_USE_COOKIES) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    } else {
+        return localStorage.getItem(name);
     }
-    return null;
 }
 
 function eraseCookie(name) {
     document.cookie = name + '=; Max-Age=-99999999;';
 }
 
-const DEFAULT_SOLVENT_SETTINGS = [
-    ["CCCO", "CCO", "CO", "O"].join("|"),
-    ["CCCN", "CCN", "CN", "N"].join("|"),
-    ["CCCP", "CCP", "CP", "P"].join("|"),
-    ["CCCF", "CCF", "CF", "F"].join("|"),
-    ["CCCC", "CCC", "CC", "C"].join("|"),
-];
 
 const _sp_prefix = "solvent-set-";
 
