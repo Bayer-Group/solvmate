@@ -12,9 +12,10 @@
 <body>
   <header>
     <img style="display:inline-block;" width="300px" src="/static/hydro_banner.svg">
-    <button style=" display:inline-block;" class="primary" onclick="showKetcher()">draw API</button>
-    <div style="display:inline-block;"> | </div>
+    <button style=" display:inline-block;" class="secondary" onclick="showKetcher()">draw API</button>
     <button style=" display:inline-block;" class="secondary" onclick="showSolventsDialog()">solvents</button>
+    <div style="display:inline-block;"> | </div>
+    <button style=" display:inline-block;" class="primary" onclick="runRanking()">run</button>
   </header>
   <main>
     <div style="display:inline-block;" id="status-message"></div>
@@ -23,15 +24,18 @@
     <div class="ketchermodal" id="ketcherModal">
       <iframe id="ifKetcher" src="/static/ketcher/index.html" width="600px" height="600px"></iframe>
       <div class="buttongroup">
-        <button onclick="setMolecule();" class="primary">OK</button>
-        <button onclick="showKetcher();" class="secondary">Cancel</button>
+        <button onclick="showKetcher();" class="primary">OK</button>
+        <!--<button onclick="showKetcher();" class="secondary">Cancel</button>-->
       </div>
     </div>
     <div class="modal" id="solventsDialogModal">
-      <div id="solvent-settings"></div>
-      <div class="buttongroup">
-        <button onclick="commitSolventsDialog();" class="primary">OK</button>
-        <button onclick="showSolventsDialog();" class="secondary">Cancel</button>
+      <p class="infoText">Select one of five freely configurable solvent presets.</p>
+      <div class="modalFlex">
+        <div id="solvent-settings"></div>
+        <div class="buttongroup">
+          <button onclick="commitSolventsDialog();" class="primary">OK</button>
+          <button onclick="showSolventsDialog();" class="secondary">Cancel</button>
+        </div>
       </div>
     </div>
     <div id="modalOuter"></div>

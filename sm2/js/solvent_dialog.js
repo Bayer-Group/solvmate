@@ -112,7 +112,7 @@ const loadSolventsDialog = function () {
     var textArea = document.createElement('textarea');
     textArea.id = 'textarea-solvent-setting';
     textArea.rows = 10;
-    textArea.cols = 30;
+    textArea.cols = 35;
     textArea.value = cookie_val.split("|").join("\n");
     elt.appendChild(textArea);
 

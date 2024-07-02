@@ -66,17 +66,32 @@
         z-index: 99999;
         visibility: hidden;
         background-color: white;
+        /*
         border-color: rgb(13, 44, 58);
         border-radius: 10px;
         border-style: solid;
         border-top-width: 10px;
         border-bottom-width: 10px;
+        */
         padding: 100px;
+    }
+
+    .modalFlex {
         display: flex;
         justify-content: center;
         align-items: center;
         flex-direction: row;
         gap: 50px;
+    }
+
+    .infoText {
+        font-size: 20px;
+        border-style: solid;
+        border-color: #1f5fe5ff;
+        border-width: 0px;
+        border-left-width: 5px;
+        margin: 20px;
+        padding: 10px;
     }
 
     #modalOuter {

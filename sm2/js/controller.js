@@ -19,6 +19,9 @@ const update_view = function (res) {
 const update_plot_view = function (res) {
     if (res === undefined) return;
     console.log("Request complete! response:" + res);
+    // Clear the main canvas:
+    document.getElementById("main-content").innerHTML = "";
+    // Refill it with the ranking outcome plot:
     document.getElementById("main-content").innerHTML += res["svg"];
     draw_molecules();
     document.getElementById("status-message").innerText = "";

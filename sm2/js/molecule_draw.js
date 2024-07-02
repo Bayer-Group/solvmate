@@ -40,7 +40,7 @@ const getKetcher = function (ketcherId) {
 
     return ketcher;
 }
-const setMolecule = function () {
+const runRanking = function () {
     const ketcher = getKetcher('ifKetcher');
     if (ketcher) {
         ketcher.getSmiles().then(
@@ -48,7 +48,6 @@ const setMolecule = function () {
                 API_SMILES = smiles;
                 update_model();
                 update_view();
-                showKetcher();
             }
         );
     }
