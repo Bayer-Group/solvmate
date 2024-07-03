@@ -8,9 +8,11 @@ const draw_molecules = function () {
     Array.from(document.getElementsByClassName("mol")).forEach((element) => {
         var smiles = element.innerHTML;
         var mol = window.RDKit.get_mol(smiles);
-        var dest = element;
-        var svg = mol.get_svg();
-        dest.innerHTML = "<div class='drawing'>" + svg + "</div>";
+        if (mol) {
+            var dest = element;
+            var svg = mol.get_svg();
+            dest.innerHTML = "<div class='drawing'>" + svg + "</div>";
+        }
     });
 };
 window
@@ -40,6 +42,13 @@ const getKetcher = function (ketcherId) {
 
     return ketcher;
 }
+
+const currentSmiles = async function () {
+    const ketcher = getKetcher('ifKetcher');
+    const smi = await ketcher.getSmiles();
+    return smi;
+};
+
 const runRanking = function () {
     const ketcher = getKetcher('ifKetcher');
     if (ketcher) {
@@ -52,12 +61,21 @@ const runRanking = function () {
         );
     }
 };
-const showKetcher = function () {
+const showKetcher = async function () {
     const vis = document.getElementById("ketcherModal").style.visibility;
     document.getElementById("ketcherModal").style.visibility = vis === "visible" ? "hidden" : "visible";
 
     const bd = document.getElementById("modalOuter");
     const bd_vis = bd.style.visibility;
     bd.style.visibility = bd_vis === "visible" ? "hidden" : "visible";
+
+    const smi = await currentSmiles();
+
+    alert(smi);
+    if (smi) {
+        alert("!!");
+        document.getElementById("current-api").innerHTML = `<div class="mol">${smi}</div>`;
+        draw_molecules();
+    }
 };
 
