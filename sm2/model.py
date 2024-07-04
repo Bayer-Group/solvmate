@@ -365,7 +365,7 @@ def evaluate_ranking(df:pd.DataFrame,experiment_name:str,):
 
     plt.clf()
     sns.violinplot(rs)
-    plt.savefig(path_for_experiment_and_fle(experiment_name=experiment_name,fle_name="ranking_spearmanrs_nova_and_onb.svg"))
+    plt.savefig(path_for_experiment_and_fle(experiment_name=experiment_name,fle_name="ranking_spearmanrs_onb_only.svg"))
     plt.clf()
 
 
@@ -396,8 +396,8 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     data = pd.read_csv(here /  "data" / "training_data_pairs.csv")
     smiles_blacklist = ["[Na]Cl",]
 
-    # data = data[data["source"] == "open_notebook"]
-    data = data[data["source"] == "nova"]
+    data = data[data["source"] == "open_notebook"]
+    # data = data[data["source"] == "nova"]
     assert len(data)
 
     for col in ["solute SMILES", "solvent SMILES a", "solvent SMILES b",]:
@@ -568,5 +568,5 @@ def run_predictions_for_smiles_pairs(solute_smiles:list[str], solvent_smiles_a:l
 if __name__ == "__main__":
 
     print(
-        run_for_smiles(["CCOCC"],experiment_name="differential_model_nova_and_onb",)
+        run_for_smiles(["CCOCC"],experiment_name="differential_model_onb_only",)
     )

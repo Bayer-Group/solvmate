@@ -71,9 +71,7 @@ const showKetcher = async function () {
 
     const smi = await currentSmiles();
 
-    alert(smi);
     if (smi) {
-        alert("!!");
         document.getElementById("current-api").innerHTML = `<div class="mol">${smi}</div>`;
         draw_molecules();
     }
