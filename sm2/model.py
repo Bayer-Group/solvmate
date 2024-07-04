@@ -396,7 +396,8 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     data = pd.read_csv(here /  "data" / "training_data_pairs.csv")
     smiles_blacklist = ["[Na]Cl",]
 
-    #data = data[data["source"] == "open_notebook"]
+    # data = data[data["source"] == "open_notebook"]
+    data = data[data["source"] == "nova"]
     assert len(data)
 
     for col in ["solute SMILES", "solvent SMILES a", "solvent SMILES b",]:

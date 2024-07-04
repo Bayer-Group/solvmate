@@ -80,6 +80,15 @@ if (_sp_active)
 else
     _sp_active = 0;
 
+
+const _nameForSlot = function (idx) {
+    const nme = getCookie("name-" + idx);
+    if (!nme)
+        return DEFAULT_SOLVENT_SETTINGS_NAMES[idx];
+    else
+        return nme;
+};
+
 const loadSolventsDialog = function () {
     const elt = document.getElementById("solvent-settings");
     elt.innerHTML = "";
@@ -87,8 +96,9 @@ const loadSolventsDialog = function () {
     buttonDiv.style.display = "block";
     for (var idx = 0; idx < 5; idx++) {
         var button = document.createElement('button');
-        button.textContent = idx;
+        button.textContent = _nameForSlot(idx);
         button.my_index = idx;
+        button.style.fontSize = "14px";
         button.addEventListener('click', function (event) {
             const button = event.target;
             _sp_active = button.my_index;
@@ -116,12 +126,25 @@ const loadSolventsDialog = function () {
     textArea.value = cookie_val.split("|").join("\n");
     elt.appendChild(textArea);
 
+    var nameAreaLabel = document.createElement("p");
+    nameAreaLabel.style.marginTop = "30px";
+    nameAreaLabel.innerText = "name:";
+    elt.appendChild(nameAreaLabel);
+
+    var nameArea = document.createElement('textarea');
+    nameArea.id = 'textarea-solvent-setting-name';
+    nameArea.rows = 1;
+    nameArea.cols = 10;
+    nameArea.value = _nameForSlot(_sp_active);
+    elt.appendChild(nameArea);
     setCookie('last-sp-active', _sp_active, 1000);
 };
 
 const commitSolventsDialog = function () {
     const ta = document.getElementById('textarea-solvent-setting');
+    const tan = document.getElementById('textarea-solvent-setting-name');
     setCookie(_sp_prefix + _sp_active, ta.value.split("\n").join("|"), 1000);
+    setCookie("name-" + _sp_active, tan.value.trim());
     showSolventsDialog();
 };
 

@@ -85,3 +85,7 @@ const DEFAULT_SOLVENT_SETTINGS = [
     "",
     ""
 ];
+
+const DEFAULT_SOLVENT_SETTINGS_NAMES = [
+    "ESS", "ALL", "?", "?", "?"
+];
