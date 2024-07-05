@@ -1,4 +1,8 @@
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.neighbors import KNeighborsRegressor
 from solvmate import *
+from solvmate.ccryst.solvent import iupac_to_smiles
+from rdkit.Chem import Descriptors
 
 """
 Script used to generate the training data.
@@ -10,6 +14,165 @@ def _canon_else_none(smi: str):
         return Chem.CanonSmiles(smi)
     except:
         return None
+
+def iupac_to_smiles_else_fail(iup:str):
+    smi = iupac_to_smiles(iup)
+    if not smi:
+        raise ValueError(f"could not convert IUPAC to smiles. IUPAC: {iup}")
+    return smi
+
+
+_density_reg = None
+def estimate_density(solvent:str):
+    """
+    Estimates the density of a given sample using a simple lookup table.
+
+    >>> estimate_density(iupac_to_smiles("pentane")) # doctest:+ELLIPSIS
+    0.6262
+    >>> estimate_density(iupac_to_smiles("octane"))
+    0.6837
+    >>> estimate_density(iupac_to_smiles("water"))
+    0.9982
+    """
+    global _density_reg
+
+    tab = """
+Pentane	; 0.6262
+Hexane ;	0.6594
+Heptane; 	0.6837
+Iso-Octane;	0.6919
+Ethyl Ether;	0.7133
+Triethylamine;	0.7276
+Methyl t-Butyl Ether;	0.7405
+Cyclopentane;	0.7454
+Cyclohexane;	0.7785
+Acetonitrile;	0.7822
+Isopropyl Alcohol;	0.7854
+Ethyl Alcohol;	0.7892
+Acetone;	0.7900
+Methanol;	0.7913
+Methyl Isobutyl Ketone;	0.8008
+Isobutyl Alcohol;	0.8016
+n-Propyl Alcohol;	0.8037
+Methyl Ethyl Ketone;	0.8049
+Methyl n-Propyl Ketone;	0.8082
+n-Butyl Alcohol;	0.8097
+Isopropyl Myristate;	0.8532
+Toluene;	0.8669
+Glyme;	0.8691
+n-Butyl Acetate;	0.8796
+o-Xylene;	0.8802
+n-Butyl Chloride;	0.8862
+Methyl Isoamyl Ketone;	0.888
+Tetrahydrofuran;	0.888
+Ethyl Acetate;	0.9006
+Dimethyl Acetamide;	0.9415
+N,N-Dimethylformamide;	0.9487
+2-Methoxyethanol;	0.9646
+Pyridine;	0.9832
+Water;	0.9982
+N-Methylpyrrolidone;	1.0304
+1,4-Dioxane;	1.0336
+Dimethyl Sulfoxide;	1.1004
+Chlorobenzene;	1.1058
+Propylene Carbonate;	1.2006
+Ethylene Dichloride;	1.253
+o-Dichlorobenzene;	1.3058
+Dichloromethane;	1.326
+1,2,4-Trichlorobenzene;	1.454
+Trifluoroacetic Acid;	1.4890
+Chloroform;	1.4892
+1,1,2-Trichlorotrifluoroethane;	1.564 
+"""
+    if _density_reg is None:
+        reg = KNeighborsRegressor(n_neighbors=1,)
+        X,y = [],[]
+        for lne in tab.strip().split("\n"):
+            lne = lne.strip().split(";")
+            mol = lne[0].strip()
+            dens = float(lne[1].strip())
+            mol = ecfp_count_fingerprint(Chem.MolFromSmiles(iupac_to_smiles_else_fail(mol)))
+            y.append(dens)
+            X.append(mol)
+        reg.fit(np.vstack(X),y)
+        _density_reg = reg
+    else:
+        reg = _density_reg
+ 
+    if isinstance(solvent,str):
+        solvent = Chem.MolFromSmiles(solvent)
+    return reg.predict(ecfp_count_fingerprint(solvent).reshape(1,-1))[0]
+
+
+def load_bao_dataset() -> pd.DataFrame:
+    """
+    
+    >>> df = load_bao_dataset()
+    >>> df.columns
+    Index(['Web of Science Index', 'Drug', 'Solvent_1',
+           'Solvent_1_weight_fraction', 'Solvent_1_mol_fraction', 'Solvent_2',
+           'Temperature (K)', 'Solubility (mol/mol)', 'DOI', 'Drugs@FDA', 'CAS',
+           'solute SMILES', 'Melting_temp (C)', 'Melting_temp (K)', 'Source_1',
+           'Source_2', 'solvent SMILES', 'solvent_frac', 'conc', 'source'],
+          dtype='object')
+    >>> df.head()
+      Web of Science Index                     Drug          Solvent_1  Solvent_1_weight_fraction  Solvent_1_mol_fraction  ... Source_2  solvent SMILES  solvent_frac      conc source
+    0                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...      NaN   CN(C)C=O.CCCO        0.1001  1.130345    bao
+    1                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...      NaN   CN(C)C=O.CCCO        0.1001  1.254943    bao
+    2                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...      NaN   CN(C)C=O.CCCO        0.1001  1.383776    bao
+    3                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...      NaN   CN(C)C=O.CCCO        0.1001  1.479709    bao
+    4                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...      NaN   CN(C)C=O.CCCO        0.1001  1.591929    bao
+    <BLANKLINE>
+    [5 rows x 20 columns]
+    """
+    data_fle = DATA_DIR / "20240305_Dataset_Raw_Exp.xlsx"
+    assert data_fle.exists()
+    df = pd.read_excel(data_fle,sheet_name=0,)
+    df_compound = pd.read_excel(data_fle,sheet_name=1,)
+    df_compound.rename(columns={"SMILES": "solute SMILES",},inplace=True,)
+    df = df.merge(df_compound,on="Drug",)
+    df["solvent SMILES"] = [
+        ".".join([iupac_to_smiles_else_fail(row["Solvent_1"]),iupac_to_smiles_else_fail(row["Solvent_2"])])
+        for _,row in df.iterrows()
+    ]
+    solvent_frac = []
+    conc = []
+    for _,row in df.iterrows():
+        s1 = Chem.MolFromSmiles(row["solvent SMILES"].split(".")[0])
+        s2 = Chem.MolFromSmiles(row["solvent SMILES"].split(".")[1])
+
+        mw1 = Descriptors.MolWt(s1)
+        mw2 = Descriptors.MolWt(s2)
+
+
+        sol_mol = row["Solubility (mol/mol)"]
+
+        if str(row["Solvent_1_weight_fraction"]).lower() == "nan":
+            # only mol fraction given. Need to calculate weight fraction
+            n1 = row["Solvent_1_mol_fraction"]
+            # wf = M1 / (M1 + M2) = M1 / ()
+            m1 = n1 * mw1
+            m2 = (1 - n1) * mw2
+
+            mw_mix = m1 + m2
+            solvent_frac.append(m1 / (mw_mix))
+        else:
+            weight_frac_1 = row["Solvent_1_weight_fraction"]
+            solvent_frac.append(weight_frac_1)
+
+            mw_mix = weight_frac_1 * mw1 + (1-weight_frac_1) * mw2
+
+        # mol / mol  / (g / mol) = mol / g = 1/1000 * mol / kg 
+        density_mix = estimate_density(s1) * solvent_frac[-1] + estimate_density(s2) *  ( 1 - solvent_frac[-1]) 
+        c = 1000 * sol_mol / mw_mix  * density_mix
+        conc.append(c)
+
+
+    df["solvent_frac"] = solvent_frac
+    df["conc"] = conc
+    df["source"] = "bao"
+
+    return df
 
 
 def load_open_notebook_dataset() -> pd.DataFrame:
@@ -151,6 +314,7 @@ if __name__ == "__main__":
             [
                 load_novartis_dataset(),
                 load_open_notebook_dataset(),
+                load_bao_dataset(),
             ]
         )
         dont_use = []
