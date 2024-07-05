@@ -113,17 +113,17 @@ def load_bao_dataset() -> pd.DataFrame:
            'Solvent_1_weight_fraction', 'Solvent_1_mol_fraction', 'Solvent_2',
            'Temperature (K)', 'Solubility (mol/mol)', 'DOI', 'Drugs@FDA', 'CAS',
            'solute SMILES', 'Melting_temp (C)', 'Melting_temp (K)', 'Source_1',
-           'Source_2', 'solvent SMILES', 'solvent_frac', 'conc', 'source'],
+           'Source_2', 'solvent SMILES', 'solvent_frac', 'conc', 'source', 'T'],
           dtype='object')
     >>> df.head()
-      Web of Science Index                     Drug          Solvent_1  Solvent_1_weight_fraction  Solvent_1_mol_fraction  ... Source_2  solvent SMILES  solvent_frac      conc source
-    0                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...      NaN   CN(C)C=O.CCCO        0.1001  1.130345    bao
-    1                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...      NaN   CN(C)C=O.CCCO        0.1001  1.254943    bao
-    2                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...      NaN   CN(C)C=O.CCCO        0.1001  1.383776    bao
-    3                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...      NaN   CN(C)C=O.CCCO        0.1001  1.479709    bao
-    4                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...      NaN   CN(C)C=O.CCCO        0.1001  1.591929    bao
+      Web of Science Index                     Drug          Solvent_1  Solvent_1_weight_fraction  Solvent_1_mol_fraction  ... solvent SMILES  solvent_frac      conc source     T
+    0                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...  CN(C)C=O.CCCO        0.1001  0.924864    bao   5.0
+    1                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...  CN(C)C=O.CCCO        0.1001  1.026813    bao  10.0
+    2                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...  CN(C)C=O.CCCO        0.1001  1.132226    bao  15.0
+    3                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...  CN(C)C=O.CCCO        0.1001  1.210720    bao  20.0
+    4                   36  Guanidine hydrochloride  Dimethylformamide                     0.1001                     NaN  ...  CN(C)C=O.CCCO        0.1001  1.302540    bao  25.0
     <BLANKLINE>
-    [5 rows x 20 columns]
+    [5 rows x 21 columns]
     """
     data_fle = DATA_DIR / "20240305_Dataset_Raw_Exp.xlsx"
     assert data_fle.exists()
@@ -171,11 +171,52 @@ def load_bao_dataset() -> pd.DataFrame:
     df["solvent_frac"] = solvent_frac
     df["conc"] = conc
     df["source"] = "bao"
-
+    df["T"] = df['Temperature (K)'] - 273.15
     return df
 
 
 def load_open_notebook_dataset() -> pd.DataFrame:
+    """
+    
+    >>> df = load_open_notebook_dataset()
+    >>> df.columns
+    Index([                  'Experiment Number (900 series refer to external references)',
+                                                                      'sample or citation',
+                                                                                     'ref',
+                                                                                  'solute',
+                                                                           'solute SMILES',
+                                                                                 'solvent',
+                                                                          'solvent SMILES',
+                                                                       'concentration (M)',
+                                                                               'wiki page',
+                                                                                    'gONS',
+                                                                                   'notes',
+                                                                              'identifier',
+                                                                             'solute type',
+                                                            'solubility - solute mass (g)',
+                                                                        'solvent mass (g)',
+                                                                  'solvent density (g/ml)',
+                                      'solute density (g/ml) - from ChemSpider prediction',
+                                                                     'solvent volume (ml)',
+                                                                      'solute volume (ml)',
+                                                                         'total vol. (ml)',
+                                                                               'solute MW',
+                                                                            'moles solute',
+           'calculated concentration (M)- assumes no expansion or contraction upon mixing',
+                                                            'calc. conc. (M) from g/100ml',
+                                                               'liquid at room temp (y/n)',
+                                                              'solute reacts with solvent',
+                                                                                    'csid',
+                                                                                      True,
+                                                                         'solubility g/l ',
+                                                          'calculated conc in moles/liter',
+                                                                'solubility mole fraction',
+                                                                      'solvent MW (g/mol)',
+                                                                                    'conc',
+                                                                                  'source'],
+          dtype='object')
+
+    """
     data_fle = DATA_FLE_OPEN_NOTEBOOK
     assert data_fle.exists()
     df = pd.read_excel(data_fle)
@@ -317,6 +358,7 @@ if __name__ == "__main__":
                 load_bao_dataset(),
             ]
         )
+        df["T"] = df["T"].fillna(25)
         dont_use = []
         for _, row in df.iterrows():
             blob = str(row).lower().replace(" ", "").replace("\t", "").replace("\n", "")
