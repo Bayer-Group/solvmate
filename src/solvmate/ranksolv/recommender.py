@@ -35,10 +35,13 @@ def norm_mat(
 
 
 class Recommender:
-    def __init__(self, reg, featurizer: AbstractFeaturizer) -> None:
+    def __init__(self, reg, featurizer: AbstractFeaturizer, to_absolute_strategy=None,) -> None:
         self.featurizer = featurizer
         self.reg = reg
-        self.to_absolute_strategy = "mean"  # TODO: make configurable
+        if to_absolute_strategy is None:
+            self.to_absolute_strategy = "mean"  
+        else:
+            self.to_absolute_strategy = to_absolute_strategy
 
     @staticmethod
     def load(filename: str):

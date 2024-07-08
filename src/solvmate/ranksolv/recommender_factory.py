@@ -153,26 +153,7 @@ class RecommenderFactory:
                     #pairwise_reduction="diff",
                     #feature_name="cosmors",
                 #),
-                # Overall, the results with the COSMO-RS were so disappointing
-                # that I would not recommend spending any time into it!
 
-                # Brings nothing. 
-                # Therefore removed to keep discussion simpler:
-                # HybridFeaturizer(
-                    # phase="train",
-                    # pairwise_reduction="diff",
-                    # feature_name="hybrid",
-                    # xtb_featurizer=XTBFeaturizer(
-                        # phase="train",
-                        # pairwise_reduction="diff",
-                        # feature_name="xtb",
-                    # ),
-                    # ecfp_featurizer=CountECFPFeaturizer(
-                        # phase="train",
-                        # pairwise_reduction="diff",
-                        # feature_name="ecfp_count",
-                    # ),
-                # ),
                 RandFeaturizer(
                     phase="train",
                     pairwise_reduction="concat",

@@ -81,12 +81,35 @@ if __name__ == "__main__":
         required=False,
         dest="paper",
     )
+    parser.add_argument(
+        "--to-abs-strat-comparison",
+        action="store_true",
+        help="compare the different pairwise ranking algorithms",
+        required=False,
+        dest="to_abs_strat_comparison",
+    )
     args = parser.parse_args()
 
     assert sum(
-        [args.hyperp, args.screen_model_types, args.finalretrain, args.paper,]
-    ), "specify only one of: --hyperp --screen-model-types --finalretrain --paper"
+        [args.hyperp, args.screen_model_types, args.finalretrain, args.paper, args.to_abs_strat_comparison,]
+    ), "specify only one of: --hyperp --screen-model-types --finalretrain --paper --to-abs-strat-comparison"
 
+
+    if args.to_abs_strat_comparison:
+        info("to abs strat comparison. Comparing the predictive performance of:") 
+        info("mean, ranked_pairs, pair_rank algorithms")
+        rcf = RecommenderFactory(abs_strat_range=["ranked_pairs","pair_rank","mean",])
+        rcf.train_and_eval_recommenders(
+            perform_cv=True,
+            perform_butina_cv=False,
+            perform_solvent_cv=False,
+            nova_as_ood=False,
+            save_recommender=False,
+            job_name="GS5_PAPER_ESI_ABS_STRAT_COMPARISON",
+            only_source="open_notebook",
+            eval_on_ood=False,
+        )
+        info("DONE.")
 
     if args.paper:
         info("reproducing the paper results")
