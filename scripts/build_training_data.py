@@ -167,8 +167,8 @@ def load_bao_dataset() -> pd.DataFrame:
         c = 1000 * sol_mol / mw_mix  * density_mix
         conc.append(c)
 
-
-    df["solvent_frac"] = solvent_frac
+    # convert the fractions into simple linear weighting factors that are easier to use
+    df["mixture_coefficients"] = [[sf, 1-sf] for sf in solvent_frac]
     df["conc"] = conc
     df["source"] = "bao"
     df["T"] = df['Temperature (K)'] - 273.15
@@ -358,6 +358,20 @@ if __name__ == "__main__":
                 load_bao_dataset(),
             ]
         )
+
+        # default solvent mixture is just the solvent with a factor 1.
+        # if there are more than one solvents, each of them get's a
+        # factor 1, so e.g. H20:MeOH 1:1 = 1*MeOH + 1*H2O
+        mcs = []
+        for _,row in df.iterrows():
+            if row["mixture_coefficients"].isna():
+                parts = row["solvent SMILES"].split(".")
+                N = len(parts)
+                mcs.append([1/N for _ in parts])
+            else:
+                mcs.append(row["mixture_coefficients"])
+        df["mixture_coefficients"] = mcs
+
         df["T"] = df["T"].fillna(25)
         dont_use = []
         for _, row in df.iterrows():

@@ -162,21 +162,29 @@ class SMPredictor(nn.Module):
             nn.Linear(node_out_feats, n_tasks)
         )
 
-    def forward(self, g_solu, g_solv_a, g_solv_b ):
+    def forward(self, g_solu, g_solv_as, g_solv_a_facs, g_solv_bs, g_solv_b_facs, ):
         node_feats_solu = g_solu.ndata['node_attr']
         edge_feats_solu = g_solu.edata['edge_attr']
         node_feats_solu = self.gnn_solu(g_solu, node_feats_solu, edge_feats_solu)
         graph_feats_solu = self.readout(g_solu, node_feats_solu)
 
-        node_feats_solv_a = g_solv_a.ndata['node_attr']
-        edge_feats_solv_a = g_solv_a.edata['edge_attr']
-        node_feats_solv_a = self.gnn_solv_a(g_solv_a, node_feats_solv_a, edge_feats_solv_a)
-        graph_feats_solv_a = self.readout(g_solv_a, node_feats_solv_a)
+        graph_feats_solv_a = []
+        for g_solv_a,fac in zip(g_solv_as,g_solv_a_facs):
+            node_feats_solv_a = g_solv_a.ndata['node_attr']
+            edge_feats_solv_a = g_solv_a.edata['edge_attr']
+            node_feats_solv_a = self.gnn_solv_a(g_solv_a, node_feats_solv_a, edge_feats_solv_a)
+            graph_feats_solv_a.append(self.readout(g_solv_a, node_feats_solv_a) * fac)
 
-        node_feats_solv_b = g_solv_b.ndata['node_attr']
-        edge_feats_solv_b = g_solv_b.edata['edge_attr']
-        node_feats_solv_b = self.gnn_solv_b(g_solv_b, node_feats_solv_b, edge_feats_solv_b)
-        graph_feats_solv_b = self.readout(g_solv_b, node_feats_solv_b)
+        graph_feats_solv_a = torch.vstack(graph_feats_solv_a).sum(0)
+
+        graph_feats_solv_b = []
+        for g_solv_b,fac in zip(g_solv_bs,g_solv_b_facs):
+            node_feats_solv_b = g_solv_b.ndata['node_attr']
+            edge_feats_solv_b = g_solv_b.edata['edge_attr']
+            node_feats_solv_b = self.gnn_solv_b(g_solv_b, node_feats_solv_b, edge_feats_solv_b)
+            graph_feats_solv_b.append(self.readout(g_solv_b, node_feats_solv_b) * fac)
+
+        graph_feats_solv_b = torch.vstack(graph_feats_solv_b).sum(0)
 
         return self.predict(torch.hstack([graph_feats_solu,graph_feats_solv_a,graph_feats_solv_b]))
 
@@ -277,17 +285,22 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
         for batchidx, batchdata in enumerate(train_loader):
 
             optimizer.zero_grad()
-            g_solu, g_solva, g_solvb, y = batchdata
+            g_solu, g_solvas, mixture_coefficients_a, g_solvbs, mixture_coefficients_b, y = batchdata
             
             y = (y - train_y_mean) / train_y_std
             
             g_solu = g_solu.to(cuda)
-            g_solva = g_solva.to(cuda)
-            g_solvb = g_solvb.to(cuda)
+            for g_solva in g_solvas:
+                g_solva = g_solva.to(cuda)
+            for g_solvb in g_solvbs:
+                g_solvb = g_solvb.to(cuda)
+
+            mixture_coefficients_a = mixture_coefficients_a.to(cuda)
+            mixture_coefficients_b = mixture_coefficients_b.to(cuda)
             #n_nodes = n_nodes.to(cuda)
             y = y.to(cuda)
             
-            predictions = net(g_solu,g_solva,g_solvb,) # n_nodes, y)
+            predictions = net(g_solu,g_solvas,mixture_coefficients_a,g_solvbs,mixture_coefficients_b,) # n_nodes, y)
             
             loss = torch.abs(predictions.squeeze() - y).mean()
             

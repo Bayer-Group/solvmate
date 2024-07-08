@@ -223,6 +223,9 @@ class GraphDataset():
 
         return self.n_node.shape[0]
 
+
+
+
 class SMDataset():
 
     def __init__(self, df:pd.DataFrame,):
@@ -383,10 +386,36 @@ class SMDataset():
             
             return mol_dict
 
-        self.mol_dict_solva = _read_mol_dict(df["solvent SMILES a"])
-        self.mol_dict_solvb = _read_mol_dict(df["solvent SMILES b"])
+        self.max_mix = max(
+            df["solvent SMILES a"].apply(lambda smi: smi.count(".")).max(),
+            df["solvent SMILES b"].apply(lambda smi: smi.count(".")).max()
+        )
+        # self.mol_dict_solva = _read_mol_dict(df["solvent SMILES a"])
+        # self.mol_dict_solvb = _read_mol_dict(df["solvent SMILES b"])
+
+        def split_ith_else(s:str,i:int):
+            try:
+                return s.split()[i]
+            except:
+                return ""
+
+        self.mol_dict_solva = []
+        self.mol_dict_solvb = []
+        for i in range(self.max_mix):
+            ith_part = df["solvent SMILES a"].apply(lambda s: split_ith_else(s,i))
+            self.mol_dict_solva.append(
+                _read_mol_dict(ith_part)
+            )
+            ith_part = df["solvent SMILES b"].apply(lambda s: split_ith_else(s,i))
+            self.mol_dict_solvb.append(
+                _read_mol_dict(ith_part)
+            )
+
         self.mol_dict_solu = _read_mol_dict(df["solute SMILES"])
         self.conc = df["conc"].values
+
+        self.mixture_coefficients_a = df["mixture_coefficients_a"]
+        self.mixture_coefficients_b = df["mixture_coefficients_b"]
 
     def _load_graph(self,mol_dict:dict,idx:int,):
         e_csum = mol_dict["e_csum"]
@@ -403,10 +432,17 @@ class SMDataset():
 
     def __getitem__(self, idx):
         conc = self.conc[idx]
-        g_solva = self._load_graph(self.mol_dict_solva,idx)
-        g_solvb = self._load_graph(self.mol_dict_solvb,idx)
+
+        g_solvas = []
+        g_solvbs = []
+        for mix_comp_idx in range(self.max_mix):
+            g_solva = self._load_graph(self.mol_dict_solva[mix_comp_idx],idx)
+            g_solvb = self._load_graph(self.mol_dict_solvb[mix_comp_idx],idx,)
+            g_solvas.append(g_solva)
+            g_solvbs.append(g_solvb)
+
         g_solu = self._load_graph(self.mol_dict_solu,idx)
-        return g_solu, g_solva, g_solvb, conc
+        return g_solu, g_solvas, self.mixture_coefficients_a[idx], g_solvbs, self.mixture_coefficients_b[idx], conc
         
         
     def __len__(self):
