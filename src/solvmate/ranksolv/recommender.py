@@ -124,31 +124,6 @@ class Recommender:
         pairs,
         top_pairs_strategy: str,
     ):
-        # I can think of three strategies how to extract the
-        # top pairs out of the training data:
-        # Right now, I believe the doubles strategy to be the
-        # best, because it considers only the most common
-        # solvent PAIRS, aka those solvent pairs that we
-        # actually have enough data about in our training set.
-        #
-        # The singleton strategy will just consider the
-        # univariate statistics and might e.g. take water
-        # and hexane as the top solvents even if their
-        # pair (hexane,water) itself might actually be rare.
-        #
-        # The all strategy will just consider all pairs.
-        #
-        # It has to be noted that I believe both singleton and
-        # all to work best with the mean/median recommenders
-        # as the graphs are already complete by construction.
-        #
-        # For the doubles strategy, I believe or at least hope
-        # to see an improvement as the graph is no longer
-        # complete. Hence, it is more difficult to reconstruct
-        # an absolute ordering from the partial information.
-        #
-        # That should be exactly the scenario to employ the
-        # ranked pairs algorithm.
         assert top_pairs_strategy in ["singleton", "doubles", "all"]
 
         if top_pairs_strategy == "all":
@@ -242,6 +217,11 @@ class Recommender:
         pairs: pd.DataFrame,
     ) -> list[list[str]]:
 
+        ties_yes = 0
+        ties_no = 0
+        close_ties_yes = 0
+        close_ties_no = 0
+
         self._featurize_pairs(pairs)
 
         print("running actual predictions on pairs ...")
@@ -309,6 +289,16 @@ class Recommender:
                     smis.append(i)
                     ds.append(g["preds"].mean())
 
+                for i,val in enumerate(ds):
+                    for j,other_val in enumerate(ds):
+                        if i < j:
+                            ties_yes += val == other_val
+                            ties_no += val != other_val
+
+                            close_ties_yes += abs(val - other_val) <= 0.1
+                            close_ties_no += abs(val - other_val) > 0.1
+                        
+
                 recommend = sorted(
                     [(smi, d) for smi, d in zip(smis, ds)], key=lambda itm: -itm[1]
                 )
@@ -321,4 +311,8 @@ class Recommender:
 
         print("... done running recommendations using pair rank")
 
+        print("ties_yes",ties_yes)
+        print("ties_no",ties_no)
+        print("close_ties_yes",close_ties_yes)
+        print("close_ties_no",close_ties_no)
         return all_recommends
