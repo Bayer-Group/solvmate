@@ -329,6 +329,7 @@ class RecommenderFactory:
                         rc = Recommender(
                             reg=reg,
                             featurizer=featurizer,
+                            to_absolute_strategy=to_abs_strat,
                         )
 
                     if perform_cv:
@@ -376,6 +377,7 @@ class RecommenderFactory:
                                 rc = Recommender(
                                     reg=reg,
                                     featurizer=featurizer,
+                                    to_absolute_strategy=to_abs_strat,
                                 )
                                 # The relative model needs to be trained on pairs
                                 print("> fit")

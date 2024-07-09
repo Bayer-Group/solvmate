@@ -98,14 +98,23 @@ if __name__ == "__main__":
     if args.to_abs_strat_comparison:
         info("to abs strat comparison. Comparing the predictive performance of:") 
         info("mean, ranked_pairs, pair_rank algorithms")
-        rcf = RecommenderFactory(abs_strat_range=["ranked_pairs","pair_rank","mean",])
+        rcf = RecommenderFactory(
+            abs_strat_range=["page_rank","pair_rank","mean",],
+            featurizers=[
+                XTBFeaturizer(
+                    phase="train",
+                    pairwise_reduction="diff",
+                    feature_name="xtb",
+                ),
+            ],
+                                 )
         rcf.train_and_eval_recommenders(
             perform_cv=True,
             perform_butina_cv=False,
             perform_solvent_cv=False,
             nova_as_ood=False,
             save_recommender=False,
-            job_name="GS5_PAPER_ESI_ABS_STRAT_COMPARISON",
+            job_name="GS9_PAPER_ESI_ABS_STRAT_COMPARISON",
             only_source="open_notebook",
             eval_on_ood=False,
         )
