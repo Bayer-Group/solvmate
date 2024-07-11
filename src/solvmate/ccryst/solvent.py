@@ -629,6 +629,10 @@ def solvent_mixture_iupac_to_smiles(
     >>> solvent_mixture_iupac_to_smiles('Wasser Methanol 1:1')
     ['CO', 'O']
     """
+    try:
+        return [Chem.CanonSmiles(solvent_mixture_iupac)]
+    except:
+        pass
     # If it is just a iupac name directly, it just refers
     # to a single solvent. So we can redirect to that
     # functionality. If this fails, e.g. because this
