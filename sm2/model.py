@@ -388,14 +388,12 @@ def evaluate_ranking(df:pd.DataFrame,experiment_name:str,):
 
 from smal.all import add_split_by_col
 def run_for_smiles(smis:list[str],experiment_name:str,):
-    data_split = [0.8, 0.1, 0.1]
     batch_size = 128
     use_pretrain = False
 
     here = Path(__file__).parent
     model_path = str(here / 'checkpoints' / 'model.pt')
     model_metadata_path = str(here / 'checkpoints' / 'model_metadata.pkl')
-    random_seed = 1
     #if not os.path.exists(model_path): os.makedirs(model_path)
     data_pred = pd.DataFrame({"solute SMILES": smis, })
     data_pred["solvent SMILES a"] = "CO" # TODO
@@ -407,12 +405,12 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     #data = pd.read_csv(here /  "data" / "training_data_singleton.csv")
     #data = GraphDataset(data)
     data = pd.read_csv(here /  "data" / "training_data_pairs.csv")
-    smiles_blacklist = ["[Na]Cl",]
 
     data = data[data["source"] == "open_notebook"]
     # data = data[data["source"] == "nova"]
     assert len(data)
 
+    smiles_blacklist = ["[Na]Cl",]
     for col in ["solute SMILES", "solvent SMILES a", "solvent SMILES b",]:
         data = data[~data[col].isin(smiles_blacklist)]
     #data = data.sample(1000,random_state=123) # TODO: remove

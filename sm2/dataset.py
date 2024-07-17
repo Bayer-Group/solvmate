@@ -395,7 +395,7 @@ class SMDataset():
 
         def split_ith_else(s:str,i:int):
             try:
-                return s.split()[i]
+                return s.split(".")[i]
             except:
                 return ""
 

@@ -359,12 +359,16 @@ if __name__ == "__main__":
             ]
         )
 
+        print(f"Before nan filter: {len(df)}")
+        df = df[(~df["solvent SMILES"].isna()) & (~df["solute SMILES"].isna())]
+        print(f"After nan filter: {len(df)}")
+
         # default solvent mixture is just the solvent with a factor 1.
         # if there are more than one solvents, each of them get's a
         # factor 1, so e.g. H20:MeOH 1:1 = 1*MeOH + 1*H2O
         mcs = []
         for _,row in df.iterrows():
-            if row["mixture_coefficients"].isna():
+            if "na" in str(row["mixture_coefficients"]).lower():
                 parts = row["solvent SMILES"].split(".")
                 N = len(parts)
                 mcs.append([1/N for _ in parts])
@@ -382,9 +386,6 @@ if __name__ == "__main__":
                 dont_use.append(False)
         df["dont_use"] = dont_use
 
-        print(f"Before nan filter: {len(df)}")
-        df = df[(~df["solvent SMILES"].isna()) & (~df["solute SMILES"].isna())]
-        print(f"After nan filter: {len(df)}")
         # top_solvents = filter_solvents_by_threshold(df)
         # df = df[df["solvent SMILES"].isin(top_solvents)]
 
@@ -425,6 +426,7 @@ if __name__ == "__main__":
 
             df = df.sample(int(len(df) / fac))
 
+        df['mixture_coefficients'] = df['mixture_coefficients'].apply(str)
         df.to_sql("training_data", con)
         con.close()
     else:

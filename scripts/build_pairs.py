@@ -46,6 +46,7 @@ def run():
 
         # assert {"nova", "open_notebook"} <= set(training_data.source.unique())
         pairs = []
+        N_solutes = training_data["solute SMILES"].nunique()
         for smi in training_data["solute SMILES"].unique():
             g = training_data[training_data["solute SMILES"] == smi]
 
@@ -53,16 +54,11 @@ def run():
                 for ib, pb in g.iterrows():
                     if (
                         ia == ib
-                        or pa.solvent == pb.solvent
+                        or pa["source"] != pa["source"]
                         or abs(pa["conc"] - pb["conc"]) < MIN_LOG_S_DIFF_THRESHOLD
                     ):
                         continue
                     else:
-                        assert (
-                            pa["source"] == pb["source"]
-                            or pa["solute SMILES"] == "CN(C)C(=O)Nc1ccc(Cl)c(Cl)c1"
-                        )
-                        assert pa["cross_fold"] == pb["cross_fold"]
                         pairs.append(
                             {
                                 "solute SMILES": pa["solute SMILES"],
@@ -74,6 +70,7 @@ def run():
                                 "cross_fold": pa["cross_fold"],
                             }
                         )
+                        print("#pairs",len(pairs), ia,"/", N_solutes)
         pairs = pd.DataFrame(pairs)
         pairs["conc diff"] = pairs["conc b"] - pairs["conc a"]
 
