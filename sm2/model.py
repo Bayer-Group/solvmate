@@ -141,13 +141,7 @@ class SMPredictor(nn.Module):
                            edge_hidden_feats=edge_hidden_feats,
                            num_step_message_passing=num_step_message_passing)
 
-        self.gnn_solv_a = MPNNGNN(node_in_feats=node_in_feats,
-                           node_out_feats=node_out_feats,
-                           edge_in_feats=edge_in_feats,
-                           edge_hidden_feats=edge_hidden_feats,
-                           num_step_message_passing=num_step_message_passing)
-
-        self.gnn_solv_b = MPNNGNN(node_in_feats=node_in_feats,
+        self.gnn_solv = MPNNGNN(node_in_feats=node_in_feats,
                            node_out_feats=node_out_feats,
                            edge_in_feats=edge_in_feats,
                            edge_hidden_feats=edge_hidden_feats,
@@ -157,36 +151,28 @@ class SMPredictor(nn.Module):
                                n_iters=num_step_set2set,
                                n_layers=num_layer_set2set)
         self.predict = nn.Sequential(
-            nn.Linear(2 * 3 * node_out_feats, node_out_feats),
+            nn.Linear(2 * 2 * node_out_feats, node_out_feats),
             nn.ReLU(),
             nn.Linear(node_out_feats, n_tasks)
         )
 
-    def forward(self, g_solu, g_solv_as, g_solv_a_facs, g_solv_bs, g_solv_b_facs, ):
+    def forward(self, g_solu, g_solvs, g_solv_facs, ):
         node_feats_solu = g_solu.ndata['node_attr']
         edge_feats_solu = g_solu.edata['edge_attr']
         node_feats_solu = self.gnn_solu(g_solu, node_feats_solu, edge_feats_solu)
         graph_feats_solu = self.readout(g_solu, node_feats_solu)
 
-        graph_feats_solv_a = []
-        for g_solv_a,fac in zip(g_solv_as,g_solv_a_facs):
-            node_feats_solv_a = g_solv_a.ndata['node_attr']
-            edge_feats_solv_a = g_solv_a.edata['edge_attr']
-            node_feats_solv_a = self.gnn_solv_a(g_solv_a, node_feats_solv_a, edge_feats_solv_a)
-            graph_feats_solv_a.append(self.readout(g_solv_a, node_feats_solv_a) * fac)
+        import pdb; pdb.set_trace()
+        graph_feats_solv = []
+        for g_solv,fac in zip(g_solvs,g_solv_facs):
+            node_feats_solv = g_solv.ndata['node_attr']
+            edge_feats_solv = g_solv.edata['edge_attr']
+            node_feats_solv = self.gnn_solv(g_solv, node_feats_solv, edge_feats_solv)
+            graph_feats_solv.append(self.readout(g_solv, node_feats_solv) * fac)
 
-        graph_feats_solv_a = torch.vstack(graph_feats_solv_a).sum(0)
+        graph_feats_solv = torch.vstack(graph_feats_solv).sum(0)
 
-        graph_feats_solv_b = []
-        for g_solv_b,fac in zip(g_solv_bs,g_solv_b_facs):
-            node_feats_solv_b = g_solv_b.ndata['node_attr']
-            edge_feats_solv_b = g_solv_b.edata['edge_attr']
-            node_feats_solv_b = self.gnn_solv_b(g_solv_b, node_feats_solv_b, edge_feats_solv_b)
-            graph_feats_solv_b.append(self.readout(g_solv_b, node_feats_solv_b) * fac)
-
-        graph_feats_solv_b = torch.vstack(graph_feats_solv_b).sum(0)
-
-        return self.predict(torch.hstack([graph_feats_solu,graph_feats_solv_a,graph_feats_solv_b]))
+        return self.predict(torch.hstack([graph_feats_solu,graph_feats_solv,]))
 
 
 class nmrMPNN(nn.Module):
@@ -285,22 +271,18 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
         for batchidx, batchdata in enumerate(train_loader):
 
             optimizer.zero_grad()
-            g_solu, g_solvas, mixture_coefficients_a, g_solvbs, mixture_coefficients_b, y = batchdata
+            g_solu, g_solvs, mixture_coefficients, y = batchdata
             
             y = (y - train_y_mean) / train_y_std
             
             g_solu = g_solu.to(cuda)
-            for g_solva in g_solvas:
-                g_solva = g_solva.to(cuda)
-            for g_solvb in g_solvbs:
-                g_solvb = g_solvb.to(cuda)
+            g_solvs = [[gs.to(cuda) for gs in g_solv] for g_solv in g_solvs]
 
-            mixture_coefficients_a = mixture_coefficients_a.to(cuda)
-            mixture_coefficients_b = mixture_coefficients_b.to(cuda)
+            #mixture_coefficients = mixture_coefficients.to(cuda)
             #n_nodes = n_nodes.to(cuda)
             y = y.to(cuda)
             
-            predictions = net(g_solu,g_solvas,mixture_coefficients_a,g_solvbs,mixture_coefficients_b,) # n_nodes, y)
+            predictions = net(g_solu,g_solvs,mixture_coefficients,) # n_nodes, y)
             
             loss = torch.abs(predictions.squeeze() - y).mean()
             
@@ -345,7 +327,7 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
     return net
     
 
-def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, cuda = torch.device('cuda:0')):
+def inference(net, test_loader, train_y_mean, train_y_std, cuda = torch.device('cuda:0')):
 
     net.eval()
     #MC_dropout(net)
@@ -353,12 +335,11 @@ def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, 
         y_pred = []
         for batchidx, batchdata in enumerate(test_loader):
 
-            g_solu, g_solva, g_solvb, _ = batchdata
+            g_solu, g_solv, _ = batchdata
             g_solu = g_solu.to(cuda)
-            g_solva = g_solva.to(cuda)
-            g_solvb = g_solvb.to(cuda)  
+            g_solv = g_solv.to(cuda)
             
-            predictions = net(g_solu,g_solva,g_solvb,) # n_nodes, y)
+            predictions = net(g_solu,g_solv,) # n_nodes, y)
             y_pred.append(predictions.cpu().numpy())
 
     y_pred_inv_std = np.vstack(y_pred) * train_y_std + train_y_mean
@@ -396,25 +377,26 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     model_metadata_path = str(here / 'checkpoints' / 'model_metadata.pkl')
     #if not os.path.exists(model_path): os.makedirs(model_path)
     data_pred = pd.DataFrame({"solute SMILES": smis, })
-    data_pred["solvent SMILES a"] = "CO" # TODO
-    data_pred["solvent SMILES b"] = "CCCCCO" # TODO
+    data_pred["solvent SMILES"] = "CO" # TODO
+    data_pred["mixture_coefficients"] = [[1] for _ in data_pred.iterrows()]
     data_pred["conc"] = 0
     data_pred = SMDataset(data_pred)
     #data_pred = pd.DataFrame({"solute SMILES": smis, "solvent SMILES": ["CCO" for _ in smis], "conc": [0 for _ in smis]})
     #data_pred = GraphDataset(data_pred)
     #data = pd.read_csv(here /  "data" / "training_data_singleton.csv")
     #data = GraphDataset(data)
-    data = pd.read_csv(here /  "data" / "training_data_pairs.csv")
+    data = pd.read_csv(here /  "data" / "training_data_sm2.csv")
+    data["mixture_coefficients"] = data["mixture_coefficients"].apply(eval)
 
-    data = data[data["source"] == "open_notebook"]
+    data = data[data["source"] != "nova"].sample(frac=.02)
     # data = data[data["source"] == "nova"]
     assert len(data)
 
     smiles_blacklist = ["[Na]Cl",]
-    for col in ["solute SMILES", "solvent SMILES a", "solvent SMILES b",]:
+    for col in ["solute SMILES", "solvent SMILES", ]:
         data = data[~data[col].isin(smiles_blacklist)]
     #data = data.sample(1000,random_state=123) # TODO: remove
-    data["conc"] = data["conc diff"]
+    #data["conc"] = data["conc diff"]
     add_split_by_col(data,col="solute SMILES",amount_train=0.6,amount_test=0.2,amount_val=0.2,random_seed=123,)
 
     df_test = data[data["split"] == "test"]
@@ -479,87 +461,12 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
 
 
 
-def _least_squares_solution(g_solu:pd.DataFrame,):
-    """
-    Orders the given per-solute dataframe by applying least squares
-    procedure on the pairwise differences.
-
-    >>> order = "abcd"
-    >>> g = pd.DataFrame([{"solvent SMILES a": val_a, "solvent SMILES b": val_b, "conc": order.index(val_b) - order.index(val_a)} for val_a in order for val_b in order])
-    >>> _least_squares_solution(g) #["conc"].tolist() # doctest: +NORMALIZE_WHITESPACE
-        solvent SMILES  conc
-    3              d   1.5
-    2              c   0.5
-    1              b  -0.5
-    0              a  -1.5
-    
-    """
-    solv_to_idx = list(sorted(set(g_solu["solvent SMILES b"].tolist())))
-    solv_to_idx = {smi: idx for idx,smi in enumerate(solv_to_idx)}
-    N = len(solv_to_idx)
-    M = []
-    b = []
-
-    for _,row in g_solu.iterrows():
-        m = np.zeros(N)
-        ia = solv_to_idx[row["solvent SMILES a"]]
-        ib = solv_to_idx[row["solvent SMILES b"]]
-        m[ia] = - 1
-        m[ib] = 1
-        
-        b.append(row["conc"])
-        M.append(m)
-
-    M = np.vstack(M)
-    solution = np.linalg.lstsq(M, b, rcond=None)[0]
-    #g_solu["absolute_ordering"] = g_solu["solvent SMILES b"].apply(lambda smi: solution[solv_to_idx[smi]])
-
-    return pd.DataFrame([{
-        "solvent SMILES": smi,
-        "conc": solution[idx],
-    }
-        for smi,idx in solv_to_idx.items()
-    ]
-    ).sort_values("conc",ascending=False,)
-
-
-def run_predictions_for_solvents(solute_smiles:str, solvents:list[str],):
-    solvent_smiles_a = [solv_a for solv_a in solvents for solv_b in solvents]
-    solvent_smiles_b = [solv_b for solv_a in solvents for solv_b in solvents]
-
-    assert isinstance(solute_smiles,str)
-    solute_smiles = [solute_smiles for _ in solvent_smiles_a]
-
-    log_s = run_predictions_for_smiles_pairs(solute_smiles=solute_smiles,solvent_smiles_a=solvent_smiles_a,solvent_smiles_b=solvent_smiles_b,)
-    dfp = pd.DataFrame({
-        "solvent SMILES a": solvent_smiles_a,
-        "solvent SMILES b": solvent_smiles_b,
-        "log S": list(log_s.reshape(-1)),
-        "solute SMILES": solute_smiles,
-    })
-    dfo = []
-    for solu in dfp["solute SMILES"].unique():
-        g_solu = dfp[dfp["solute SMILES"] == solu]
-        g_solu["conc"] = g_solu["log S"]
-        g_rank = _least_squares_solution(g_solu)
-        g_rank["log S"] = g_rank["conc"]
-        g_rank["solute SMILES"] = solu
-        dfo.append(g_rank)
-        #for solv in dfp["solvent SMILES b"].unique():
-        # g_solu_solv = g_solu[g_solu["solvent SMILES b"] == solv]
-        # dfo.append({"solute SMILES": solu, "solvent SMILES": solv, "log S": g_solu_solv["log S"].sum(),})
-    
-    dfo = pd.concat(dfo)
-    return dfo
-        
-
-
-def run_predictions_for_smiles_pairs(solute_smiles:list[str], solvent_smiles_a:list[str], solvent_smiles_b:list[str],):
+def run_predictions_for_smiles_pairs(solute_smiles:list[str], solvent_smiles:list[str], ):
     batch_size = 128
     here = Path(__file__).parent
     model_path = str(here / 'checkpoints' / 'model.pt')
     model_metadata_path = str(here / 'checkpoints' / 'model_metadata.pkl')
-    data_pred = pd.DataFrame({"solute SMILES": solute_smiles, "solvent SMILES a": solvent_smiles_a, "solvent SMILES b": solvent_smiles_b,})
+    data_pred = pd.DataFrame({"solute SMILES": solute_smiles, "solvent SMILES": solvent_smiles})
     data_pred["conc"] = 0
     data_pred = SMDataset(data_pred)
 
