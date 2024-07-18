@@ -170,6 +170,7 @@ def load_bao_dataset() -> pd.DataFrame:
     # convert the fractions into simple linear weighting factors that are easier to use
     df["mixture_coefficients"] = [[sf, 1-sf] for sf in solvent_frac]
     df["conc"] = conc
+    df["conc"] = df["conc"].apply(np.log10)
     df["source"] = "bao"
     df["T"] = df['Temperature (K)'] - 273.15
     return df

@@ -156,21 +156,28 @@ class SMPredictor(nn.Module):
             nn.Linear(node_out_feats, n_tasks)
         )
 
-    def forward(self, g_solu, g_solvs, g_solv_facs, ):
+    def forward(self, g_solu, g_solv_1, g_solv_2, g_solv_facs, ):
         node_feats_solu = g_solu.ndata['node_attr']
         edge_feats_solu = g_solu.edata['edge_attr']
         node_feats_solu = self.gnn_solu(g_solu, node_feats_solu, edge_feats_solu)
         graph_feats_solu = self.readout(g_solu, node_feats_solu)
 
-        import pdb; pdb.set_trace()
-        graph_feats_solv = []
-        for g_solv,fac in zip(g_solvs,g_solv_facs):
-            node_feats_solv = g_solv.ndata['node_attr']
-            edge_feats_solv = g_solv.edata['edge_attr']
-            node_feats_solv = self.gnn_solv(g_solv, node_feats_solv, edge_feats_solv)
-            graph_feats_solv.append(self.readout(g_solv, node_feats_solv) * fac)
+        node_feats_solv_1 = g_solv_1.ndata['node_attr']
+        edge_feats_solv_1 = g_solv_1.edata['edge_attr']
+        node_feats_solv_1 = self.gnn_solv(g_solv_1, node_feats_solv_1, edge_feats_solv_1)
+        graph_feats_solv_1 = self.readout(g_solv_1, node_feats_solv_1) 
 
-        graph_feats_solv = torch.vstack(graph_feats_solv).sum(0)
+        #node_feats_solv_2 = g_solv_2.ndata['node_attr']
+        #edge_feats_solv_2 = g_solv_2.edata['edge_attr']
+        #node_feats_solv_2 = self.gnn_solv(g_solv_2, node_feats_solv_2, edge_feats_solv_2)
+        #graph_feats_solv_2 = self.readout(g_solv_2, node_feats_solv_2) 
+
+        # idea: looking at it:
+        #import pdb; pdb.set_trace()
+        #graph_feats_solv = g_solv_facs[:,0].reshape(-1,1) * graph_feats_solv_1 + g_solv_facs[:,1].reshape(-1,1) * graph_feats_solv_2
+
+        # idea: ignoring mixtures, look only at first component. That should work at least somewhat
+        graph_feats_solv = graph_feats_solv_1 
 
         return self.predict(torch.hstack([graph_feats_solu,graph_feats_solv,]))
 
@@ -252,7 +259,7 @@ class nmrMPNN(nn.Module):
         return out
 
         
-def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_path, n_forward_pass = 5, cuda = torch.device('cuda:0'), experiment_name=None):
+def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_path, cuda = torch.device('cuda:0'), experiment_name=None):
 
     train_size = train_loader.dataset.__len__()
     batch_size = train_loader.batch_size
@@ -271,18 +278,19 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
         for batchidx, batchdata in enumerate(train_loader):
 
             optimizer.zero_grad()
-            g_solu, g_solvs, mixture_coefficients, y = batchdata
+            g_solu, g_solv_1, g_solv_2, mixture_coefficients, y = batchdata
             
             y = (y - train_y_mean) / train_y_std
             
             g_solu = g_solu.to(cuda)
-            g_solvs = [[gs.to(cuda) for gs in g_solv] for g_solv in g_solvs]
+            g_solv_1 = g_solv_1.to(cuda)
+            g_solv_2 = g_solv_2.to(cuda)
 
-            #mixture_coefficients = mixture_coefficients.to(cuda)
+            mixture_coefficients = mixture_coefficients.to(cuda)
             #n_nodes = n_nodes.to(cuda)
             y = y.to(cuda)
             
-            predictions = net(g_solu,g_solvs,mixture_coefficients,) # n_nodes, y)
+            predictions = net(g_solu,g_solv_1,g_solv_2,mixture_coefficients,) # n_nodes, y)
             
             loss = torch.abs(predictions.squeeze() - y).mean()
             
@@ -296,7 +304,7 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
         #print('--- training epoch %d, processed %d/%d, loss %.3f, time elapsed(min) %.2f' %(epoch,  train_size, train_size, train_loss, (time.time()-start_time)/60))
     
         # validation
-        val_y_pred = inference(net, val_loader, train_y_mean, train_y_std, n_forward_pass = n_forward_pass)
+        val_y_pred = inference(net, val_loader, train_y_mean, train_y_std, )
         val_loss = mean_absolute_error(val_y, val_y_pred)
         val_r2 = r2_score(val_y, val_y_pred)
         val_spearmanr = stats.spearmanr(val_y, val_y_pred)[0]
@@ -335,11 +343,13 @@ def inference(net, test_loader, train_y_mean, train_y_std, cuda = torch.device('
         y_pred = []
         for batchidx, batchdata in enumerate(test_loader):
 
-            g_solu, g_solv, _ = batchdata
+            g_solu, g_solv_1, g_solv_2, mixture_coefficients, _ = batchdata
             g_solu = g_solu.to(cuda)
-            g_solv = g_solv.to(cuda)
+            g_solv_1 = g_solv_1.to(cuda)
+            g_solv_2 = g_solv_2.to(cuda)
+            mixture_coefficients = mixture_coefficients.to(cuda)
             
-            predictions = net(g_solu,g_solv,) # n_nodes, y)
+            predictions = net(g_solu,g_solv_1,g_solv_2, mixture_coefficients, ) # n_nodes, y)
             y_pred.append(predictions.cpu().numpy())
 
     y_pred_inv_std = np.vstack(y_pred) * train_y_std + train_y_mean
@@ -377,8 +387,8 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     model_metadata_path = str(here / 'checkpoints' / 'model_metadata.pkl')
     #if not os.path.exists(model_path): os.makedirs(model_path)
     data_pred = pd.DataFrame({"solute SMILES": smis, })
-    data_pred["solvent SMILES"] = "CO" # TODO
-    data_pred["mixture_coefficients"] = [[1] for _ in data_pred.iterrows()]
+    data_pred["solvent SMILES"] = "CO.CCO" # TODO
+    data_pred["mixture_coefficients"] = [[0.5,0.5] for _ in data_pred.iterrows()]
     data_pred["conc"] = 0
     data_pred = SMDataset(data_pred)
     #data_pred = pd.DataFrame({"solute SMILES": smis, "solvent SMILES": ["CCO" for _ in smis], "conc": [0 for _ in smis]})
@@ -388,7 +398,9 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     data = pd.read_csv(here /  "data" / "training_data_sm2.csv")
     data["mixture_coefficients"] = data["mixture_coefficients"].apply(eval)
 
-    data = data[data["source"] != "nova"].sample(frac=.02)
+    data = data[data["source"] != "nova"]
+    data = data[data["source"] == "open_notebook"]
+    #data = data.sample(frac=.02)
     # data = data[data["source"] == "nova"]
     assert len(data)
 

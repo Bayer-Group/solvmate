@@ -386,15 +386,16 @@ class SMDataset():
             
             return mol_dict
 
-        self.max_mix = df["solvent SMILES"].apply(lambda smi: smi.count(".")).max()
+        self.max_mix = 2
         # self.mol_dict_solva = _read_mol_dict(df["solvent SMILES a"])
         # self.mol_dict_solvb = _read_mol_dict(df["solvent SMILES b"])
 
         def split_ith_else(s:str,i:int):
-            try:
-                return s.split(".")[i]
-            except:
-                return ""
+            parts = s.split(".")
+            if i < len(parts):
+                return parts[i]
+            else:
+                return "O" # placeholder molecule
 
         self.mol_dict_solv = []
         for i in range(self.max_mix):
@@ -407,6 +408,7 @@ class SMDataset():
         self.conc = df["conc"].values
 
         self.mixture_coefficients = df["mixture_coefficients"].tolist()
+        self.df = df
 
     def _load_graph(self,mol_dict:dict,idx:int,):
         e_csum = mol_dict["e_csum"]
@@ -430,7 +432,13 @@ class SMDataset():
             g_solvs.append(g_solv)
 
         g_solu = self._load_graph(self.mol_dict_solu,idx)
-        return g_solu, g_solvs, self.mixture_coefficients[idx], conc
+        fac = self.mixture_coefficients[idx]
+        assert len(fac)
+        while len(fac) <2:
+            fac.append(0)
+
+        #import pdb; pdb.set_trace()
+        return g_solu, g_solvs[0], g_solvs[1], fac, conc
         
         
     def __len__(self):

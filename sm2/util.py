@@ -14,7 +14,7 @@ def collate_reaction_graphs(batch):
     #g_solvs = [dgl.batch(g_solv) for g_solv in g_solvs]
 
     conc = torch.FloatTensor(np.hstack(conc))
-    #facs = torch.FloatTensor(np.array(facs))
+    facs = torch.FloatTensor(np.array(facs))
     return g_solu, g_solvs_1, g_solvs_2, facs, conc
 
 
