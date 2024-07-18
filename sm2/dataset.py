@@ -418,8 +418,8 @@ class SMDataset():
         self.mol_dict_solu = _read_mol_dict(df["solute SMILES"])
         self.conc = df["conc"].values
 
-        self.mixture_coefficients_a = df["mixture_coefficients a"]
-        self.mixture_coefficients_b = df["mixture_coefficients b"]
+        self.mixture_coefficients_a = df["mixture_coefficients a"].tolist()
+        self.mixture_coefficients_b = df["mixture_coefficients b"].tolist()
 
     def _load_graph(self,mol_dict:dict,idx:int,):
         e_csum = mol_dict["e_csum"]
@@ -445,8 +445,23 @@ class SMDataset():
             g_solvas.append(g_solva)
             g_solvbs.append(g_solvb)
 
+        facs_a = self.mixture_coefficients_a[idx]
+        facs_b = self.mixture_coefficients_b[idx]
+
+        while len(facs_a) <2:
+            facs_a.append(0)
+
+        while len(facs_b) <2:
+            facs_b.append(0)
+
         g_solu = self._load_graph(self.mol_dict_solu,idx)
-        return g_solu, g_solvas[0], g_solvas[1], self.mixture_coefficients_a[idx], g_solvbs[0], g_solvbs[1], self.mixture_coefficients_b[idx], conc
+
+        assert len(facs_a) == 2
+        assert len(facs_b) == 2
+        eta = 0.0001
+        assert abs(sum(facs_a) - 1) < eta
+        assert abs(sum(facs_b) - 1) < eta
+        return g_solu, g_solvas[0], g_solvas[1], facs_a, g_solvbs[0], g_solvbs[1], facs_b, conc
         
         
     def __len__(self):

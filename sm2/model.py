@@ -361,12 +361,16 @@ def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, 
         y_pred = []
         for batchidx, batchdata in enumerate(test_loader):
 
-            g_solu, g_solva, g_solvb, _ = batchdata
+            g_solu, g_solva1, g_solva2, fac_a, g_solvb1 ,g_solvb2, fac_b, _ = batchdata
             g_solu = g_solu.to(cuda)
-            g_solva = g_solva.to(cuda)
-            g_solvb = g_solvb.to(cuda)  
+            g_solva1 = g_solva1.to(cuda)
+            g_solva2 = g_solva2.to(cuda)
+            fac_a = fac_a.to(cuda)
+            g_solvb1 = g_solvb1.to(cuda)  
+            g_solvb2 = g_solvb2.to(cuda)  
+            fac_b = fac_b.to(cuda)
             
-            predictions = net(g_solu,g_solva,g_solvb,) # n_nodes, y)
+            predictions = net(g_solu,g_solva1,g_solva2,fac_a,g_solvb1,g_solvb2,fac_b,) # n_nodes, y)
             y_pred.append(predictions.cpu().numpy())
 
     y_pred_inv_std = np.vstack(y_pred) * train_y_std + train_y_mean
@@ -414,7 +418,7 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     #data_pred = GraphDataset(data_pred)
     #data = pd.read_csv(here /  "data" / "training_data_singleton.csv")
     #data = GraphDataset(data)
-    data = pd.read_csv(here /  "data" / "training_data_pairs.csv")
+    data = pd.read_csv(here /  "data" / "sm2_pairwise.csv")
 
     data = data[data["source"] == "open_notebook"]
     # data = data[data["source"] == "nova"]
@@ -423,7 +427,12 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     smiles_blacklist = ["[Na]Cl",]
     for col in ["solute SMILES", "solvent SMILES a", "solvent SMILES b",]:
         data = data[~data[col].isin(smiles_blacklist)]
-    #data = data.sample(1000,random_state=123) # TODO: remove
+
+    for col in ['mixture_coefficients a', 'mixture_coefficients b',]:
+        data[col] = data[col].apply(eval)
+
+    data = data.sample(1000,random_state=123) # TODO: remove
+
     data["conc"] = data["conc diff"]
     add_split_by_col(data,col="solute SMILES",amount_train=0.6,amount_test=0.2,amount_val=0.2,random_seed=123,)
 
