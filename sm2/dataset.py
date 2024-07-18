@@ -386,18 +386,22 @@ class SMDataset():
             
             return mol_dict
 
-        self.max_mix = max(
+        self.max_mix = 2
+        
+        assert max(
             df["solvent SMILES a"].apply(lambda smi: smi.count(".")).max(),
             df["solvent SMILES b"].apply(lambda smi: smi.count(".")).max()
-        )
+        ) <= self.max_mix
+
         # self.mol_dict_solva = _read_mol_dict(df["solvent SMILES a"])
         # self.mol_dict_solvb = _read_mol_dict(df["solvent SMILES b"])
 
         def split_ith_else(s:str,i:int):
-            try:
-                return s.split(".")[i]
-            except:
-                return ""
+            parts = s.split(".")
+            if i < len(parts):
+                return parts[i] 
+            else:
+                return "O" # placeholder molecule
 
         self.mol_dict_solva = []
         self.mol_dict_solvb = []
@@ -414,8 +418,8 @@ class SMDataset():
         self.mol_dict_solu = _read_mol_dict(df["solute SMILES"])
         self.conc = df["conc"].values
 
-        self.mixture_coefficients_a = df["mixture_coefficients_a"]
-        self.mixture_coefficients_b = df["mixture_coefficients_b"]
+        self.mixture_coefficients_a = df["mixture_coefficients a"]
+        self.mixture_coefficients_b = df["mixture_coefficients b"]
 
     def _load_graph(self,mol_dict:dict,idx:int,):
         e_csum = mol_dict["e_csum"]
@@ -436,13 +440,13 @@ class SMDataset():
         g_solvas = []
         g_solvbs = []
         for mix_comp_idx in range(self.max_mix):
-            g_solva = self._load_graph(self.mol_dict_solva[mix_comp_idx],idx)
+            g_solva = self._load_graph(self.mol_dict_solva[mix_comp_idx],idx,)
             g_solvb = self._load_graph(self.mol_dict_solvb[mix_comp_idx],idx,)
             g_solvas.append(g_solva)
             g_solvbs.append(g_solvb)
 
         g_solu = self._load_graph(self.mol_dict_solu,idx)
-        return g_solu, g_solvas, self.mixture_coefficients_a[idx], g_solvbs, self.mixture_coefficients_b[idx], conc
+        return g_solu, g_solvas[0], g_solvas[1], self.mixture_coefficients_a[idx], g_solvbs[0], g_solvbs[1], self.mixture_coefficients_b[idx], conc
         
         
     def __len__(self):

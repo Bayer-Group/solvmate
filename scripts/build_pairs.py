@@ -64,6 +64,8 @@ def run():
                                 "solute SMILES": pa["solute SMILES"],
                                 "solvent SMILES a": pa["solvent SMILES"],
                                 "solvent SMILES b": pb["solvent SMILES"],
+                                "mixture_coefficients a": pa["mixture_coefficients"],
+                                "mixture_coefficients b": pb["mixture_coefficients"],
                                 "conc a": pa["conc"],
                                 "conc b": pb["conc"],
                                 "source": pa["source"],
@@ -74,13 +76,13 @@ def run():
         pairs = pd.DataFrame(pairs)
         pairs["conc diff"] = pairs["conc b"] - pairs["conc a"]
 
-        print("filtering the top solvent pairings ...")
-        print("before", len(pairs))
-        top_N = 60
-        top_N = pairs["solvent SMILES a"].value_counts().iloc[0:top_N].index.tolist()
-        pairs = pairs[pairs["solvent SMILES a"].isin(top_N)]
-        pairs = pairs[pairs["solvent SMILES b"].isin(top_N)]
-        print("after", len(pairs))
+        #print("filtering the top solvent pairings ...")
+        #print("before", len(pairs))
+        #top_N = 60
+        #top_N = pairs["solvent SMILES a"].value_counts().iloc[0:top_N].index.tolist()
+        #pairs = pairs[pairs["solvent SMILES a"].isin(top_N)]
+        #pairs = pairs[pairs["solvent SMILES b"].isin(top_N)]
+        #print("after", len(pairs))
 
         hard_downsample = False
         hard_downsample_by = None

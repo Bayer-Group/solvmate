@@ -162,29 +162,37 @@ class SMPredictor(nn.Module):
             nn.Linear(node_out_feats, n_tasks)
         )
 
-    def forward(self, g_solu, g_solv_as, g_solv_a_facs, g_solv_bs, g_solv_b_facs, ):
+    def forward(self, g_solu, g_solv_a1, g_solv_a2, g_solv_a_facs, g_solv_b1, g_solv_b2, g_solv_b_facs, ):
         node_feats_solu = g_solu.ndata['node_attr']
         edge_feats_solu = g_solu.edata['edge_attr']
         node_feats_solu = self.gnn_solu(g_solu, node_feats_solu, edge_feats_solu)
         graph_feats_solu = self.readout(g_solu, node_feats_solu)
 
-        graph_feats_solv_a = []
-        for g_solv_a,fac in zip(g_solv_as,g_solv_a_facs):
-            node_feats_solv_a = g_solv_a.ndata['node_attr']
-            edge_feats_solv_a = g_solv_a.edata['edge_attr']
-            node_feats_solv_a = self.gnn_solv_a(g_solv_a, node_feats_solv_a, edge_feats_solv_a)
-            graph_feats_solv_a.append(self.readout(g_solv_a, node_feats_solv_a) * fac)
+        # Solvent Block A
+        node_feats_solv_a1 = g_solv_a1.ndata['node_attr']
+        edge_feats_solv_a1 = g_solv_a1.edata['edge_attr']
+        node_feats_solv_a1 = self.gnn_solv_a(g_solv_a1, node_feats_solv_a1, edge_feats_solv_a1)
+        graph_feats_solv_a1 = self.readout(g_solv_a1, node_feats_solv_a1)
 
-        graph_feats_solv_a = torch.vstack(graph_feats_solv_a).sum(0)
+        node_feats_solv_a2 = g_solv_a2.ndata['node_attr']
+        edge_feats_solv_a2 = g_solv_a2.edata['edge_attr']
+        node_feats_solv_a2 = self.gnn_solv_a(g_solv_a2, node_feats_solv_a2, edge_feats_solv_a2)
+        graph_feats_solv_a2 = self.readout(g_solv_a2, node_feats_solv_a2)
 
-        graph_feats_solv_b = []
-        for g_solv_b,fac in zip(g_solv_bs,g_solv_b_facs):
-            node_feats_solv_b = g_solv_b.ndata['node_attr']
-            edge_feats_solv_b = g_solv_b.edata['edge_attr']
-            node_feats_solv_b = self.gnn_solv_b(g_solv_b, node_feats_solv_b, edge_feats_solv_b)
-            graph_feats_solv_b.append(self.readout(g_solv_b, node_feats_solv_b) * fac)
+        graph_feats_solv_a = g_solv_a_facs[:,0].reshape(-1,1) * graph_feats_solv_a1 + g_solv_a_facs[:,1].reshape(-1,1) * graph_feats_solv_a2
 
-        graph_feats_solv_b = torch.vstack(graph_feats_solv_b).sum(0)
+        # Solvent Block B
+        node_feats_solv_b1 = g_solv_b1.ndata['node_attr']
+        edge_feats_solv_b1 = g_solv_b1.edata['edge_attr']
+        node_feats_solv_b1 = self.gnn_solv_b(g_solv_b1, node_feats_solv_b1, edge_feats_solv_b1)
+        graph_feats_solv_b1 = self.readout(g_solv_b1, node_feats_solv_b1)
+
+        node_feats_solv_b2 = g_solv_b2.ndata['node_attr']
+        edge_feats_solv_b2 = g_solv_b2.edata['edge_attr']
+        node_feats_solv_b2 = self.gnn_solv_b(g_solv_b2, node_feats_solv_b2, edge_feats_solv_b2)
+        graph_feats_solv_b2 = self.readout(g_solv_b2, node_feats_solv_b2)
+
+        graph_feats_solv_b = g_solv_b_facs[:,0].reshape(-1,1) * graph_feats_solv_b1 + g_solv_b_facs[:,1].reshape(-1,1) * graph_feats_solv_b2
 
         return self.predict(torch.hstack([graph_feats_solu,graph_feats_solv_a,graph_feats_solv_b]))
 
@@ -285,22 +293,22 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
         for batchidx, batchdata in enumerate(train_loader):
 
             optimizer.zero_grad()
-            g_solu, g_solvas, mixture_coefficients_a, g_solvbs, mixture_coefficients_b, y = batchdata
+            g_solu, g_solva_1, g_solva_2, mixture_coefficients_a, g_solvb_1, g_solvb_2, mixture_coefficients_b, y = batchdata
             
             y = (y - train_y_mean) / train_y_std
             
             g_solu = g_solu.to(cuda)
-            for g_solva in g_solvas:
-                g_solva = g_solva.to(cuda)
-            for g_solvb in g_solvbs:
-                g_solvb = g_solvb.to(cuda)
+            g_solva_1 = g_solva_1.to(cuda)
+            g_solva_2 = g_solva_2.to(cuda)
+            g_solvb_1 = g_solvb_1.to(cuda)
+            g_solvb_2 = g_solvb_2.to(cuda)
 
             mixture_coefficients_a = mixture_coefficients_a.to(cuda)
             mixture_coefficients_b = mixture_coefficients_b.to(cuda)
             #n_nodes = n_nodes.to(cuda)
             y = y.to(cuda)
             
-            predictions = net(g_solu,g_solvas,mixture_coefficients_a,g_solvbs,mixture_coefficients_b,) # n_nodes, y)
+            predictions = net(g_solu,g_solva_1,g_solva_2,mixture_coefficients_a,g_solvb_1,g_solvb_2,mixture_coefficients_b,) # n_nodes, y)
             
             loss = torch.abs(predictions.squeeze() - y).mean()
             
@@ -396,9 +404,11 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     model_metadata_path = str(here / 'checkpoints' / 'model_metadata.pkl')
     #if not os.path.exists(model_path): os.makedirs(model_path)
     data_pred = pd.DataFrame({"solute SMILES": smis, })
-    data_pred["solvent SMILES a"] = "CO" # TODO
-    data_pred["solvent SMILES b"] = "CCCCCO" # TODO
+    data_pred["solvent SMILES a"] = "CO.CCO" # TODO
+    data_pred["solvent SMILES b"] = "CCCCCO.CCO" # TODO
     data_pred["conc"] = 0
+    data_pred["mixture_coefficients a"] = 1
+    data_pred["mixture_coefficients b"] = 0
     data_pred = SMDataset(data_pred)
     #data_pred = pd.DataFrame({"solute SMILES": smis, "solvent SMILES": ["CCO" for _ in smis], "conc": [0 for _ in smis]})
     #data_pred = GraphDataset(data_pred)
