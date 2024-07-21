@@ -420,6 +420,8 @@ class SMDataset():
 
         self.mixture_coefficients_a = df["mixture_coefficients a"].tolist()
         self.mixture_coefficients_b = df["mixture_coefficients b"].tolist()
+        self.temp_a = df["temp_a"].tolist()
+        self.temp_b = df["temp_b"].tolist()
 
     def _load_graph(self,mol_dict:dict,idx:int,):
         e_csum = mol_dict["e_csum"]
@@ -436,6 +438,8 @@ class SMDataset():
 
     def __getitem__(self, idx):
         conc = self.conc[idx]
+        temp_a = self.temp_a[idx]
+        temp_b = self.temp_b[idx]
 
         g_solvas = []
         g_solvbs = []
@@ -461,7 +465,7 @@ class SMDataset():
         eta = 0.0001
         assert abs(sum(facs_a) - 1) < eta
         assert abs(sum(facs_b) - 1) < eta
-        return g_solu, g_solvas[0], g_solvas[1], facs_a, g_solvbs[0], g_solvbs[1], facs_b, conc
+        return g_solu, g_solvas[0], g_solvas[1], facs_a, g_solvbs[0], g_solvbs[1], facs_b, conc, temp_a, temp_b
         
         
     def __len__(self):

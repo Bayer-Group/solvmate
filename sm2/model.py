@@ -157,12 +157,13 @@ class SMPredictor(nn.Module):
                                n_iters=num_step_set2set,
                                n_layers=num_layer_set2set)
         self.predict = nn.Sequential(
-            nn.Linear(2 * 3 * node_out_feats, node_out_feats),
+            # 2 (=? ) * 3 (= solv_a,solv_b,solu) + 2 (= temp_a,temp_b)
+            nn.Linear(2 * 3 * node_out_feats + 2, node_out_feats),
             nn.ReLU(),
             nn.Linear(node_out_feats, n_tasks)
         )
 
-    def forward(self, g_solu, g_solv_a1, g_solv_a2, g_solv_a_facs, g_solv_b1, g_solv_b2, g_solv_b_facs, ):
+    def forward(self, g_solu, g_solv_a1, g_solv_a2, g_solv_a_facs, g_solv_b1, g_solv_b2, g_solv_b_facs, temp_a, temp_b,):
         node_feats_solu = g_solu.ndata['node_attr']
         edge_feats_solu = g_solu.edata['edge_attr']
         node_feats_solu = self.gnn_solu(g_solu, node_feats_solu, edge_feats_solu)
@@ -194,7 +195,9 @@ class SMPredictor(nn.Module):
 
         graph_feats_solv_b = g_solv_b_facs[:,0].reshape(-1,1) * graph_feats_solv_b1 + g_solv_b_facs[:,1].reshape(-1,1) * graph_feats_solv_b2
 
-        return self.predict(torch.hstack([graph_feats_solu,graph_feats_solv_a,graph_feats_solv_b]))
+        assert len(temp_a) == len(temp_b)
+        assert len(temp_a) == len(graph_feats_solu)
+        return self.predict(torch.hstack([graph_feats_solu,graph_feats_solv_a,graph_feats_solv_b,temp_a,temp_b,]))
 
 
 class nmrMPNN(nn.Module):
@@ -293,7 +296,7 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
         for batchidx, batchdata in enumerate(train_loader):
 
             optimizer.zero_grad()
-            g_solu, g_solva_1, g_solva_2, mixture_coefficients_a, g_solvb_1, g_solvb_2, mixture_coefficients_b, y = batchdata
+            g_solu, g_solva_1, g_solva_2, mixture_coefficients_a, g_solvb_1, g_solvb_2, mixture_coefficients_b, temp_a, temp_b, y = batchdata
             
             y = (y - train_y_mean) / train_y_std
             
@@ -305,10 +308,11 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
 
             mixture_coefficients_a = mixture_coefficients_a.to(cuda)
             mixture_coefficients_b = mixture_coefficients_b.to(cuda)
-            #n_nodes = n_nodes.to(cuda)
+            temp_a = temp_a.to(cuda)
+            temp_b = temp_b.to(cuda)
             y = y.to(cuda)
             
-            predictions = net(g_solu,g_solva_1,g_solva_2,mixture_coefficients_a,g_solvb_1,g_solvb_2,mixture_coefficients_b,) # n_nodes, y)
+            predictions = net(g_solu,g_solva_1,g_solva_2,mixture_coefficients_a,g_solvb_1,g_solvb_2,mixture_coefficients_b,temp_a,temp_b,) 
             
             loss = torch.abs(predictions.squeeze() - y).mean()
             
@@ -361,7 +365,7 @@ def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, 
         y_pred = []
         for batchidx, batchdata in enumerate(test_loader):
 
-            g_solu, g_solva1, g_solva2, fac_a, g_solvb1 ,g_solvb2, fac_b, _ = batchdata
+            g_solu, g_solva1, g_solva2, fac_a, g_solvb1 ,g_solvb2, fac_b, temp_a, temp_b, _ = batchdata
             g_solu = g_solu.to(cuda)
             g_solva1 = g_solva1.to(cuda)
             g_solva2 = g_solva2.to(cuda)
@@ -369,8 +373,10 @@ def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, 
             g_solvb1 = g_solvb1.to(cuda)  
             g_solvb2 = g_solvb2.to(cuda)  
             fac_b = fac_b.to(cuda)
+            temp_a = temp_a.to(cuda)
+            temp_b = temp_b.to(cuda)
             
-            predictions = net(g_solu,g_solva1,g_solva2,fac_a,g_solvb1,g_solvb2,fac_b,) # n_nodes, y)
+            predictions = net(g_solu,g_solva1,g_solva2,fac_a,g_solvb1,g_solvb2,fac_b,temp_a,temp_b,) # n_nodes, y)
             y_pred.append(predictions.cpu().numpy())
 
     y_pred_inv_std = np.vstack(y_pred) * train_y_std + train_y_mean
