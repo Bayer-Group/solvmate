@@ -172,6 +172,7 @@ def load_bao_dataset() -> pd.DataFrame:
     df["conc"] = conc
     df["source"] = "bao"
     df["T"] = df['Temperature (K)'] - 273.15
+    df["conc"] = df["conc"].apply(np.log10)
     return df
 
 
