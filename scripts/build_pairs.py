@@ -66,6 +66,8 @@ def run():
                                 "solvent SMILES b": pb["solvent SMILES"],
                                 "mixture_coefficients a": pa["mixture_coefficients"],
                                 "mixture_coefficients b": pb["mixture_coefficients"],
+                                "temp_a": pa["T"],
+                                "temp_b": pb["T"],
                                 "conc a": pa["conc"],
                                 "conc b": pb["conc"],
                                 "source": pa["source"],
