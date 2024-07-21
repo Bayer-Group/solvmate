@@ -195,6 +195,13 @@ class SMPredictor(nn.Module):
 
         graph_feats_solv_b = g_solv_b_facs[:,0].reshape(-1,1) * graph_feats_solv_b1 + g_solv_b_facs[:,1].reshape(-1,1) * graph_feats_solv_b2
 
+
+        # A simple StdScaler that assumes mean temperatures of 30 degrees
+        # and standard deviations of 15 degrees. Should project most
+        # reasonable temperatures into a reasonable range
+        temp_a = (temp_a - 30) / 15
+        temp_b = (temp_b - 30) / 15
+
         assert len(temp_a) == len(temp_b)
         assert len(temp_a) == len(graph_feats_solu)
         return self.predict(torch.hstack([graph_feats_solu,graph_feats_solv_a,graph_feats_solv_b,temp_a,temp_b,]))
