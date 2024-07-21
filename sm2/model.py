@@ -420,7 +420,7 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     #data = GraphDataset(data)
     data = pd.read_csv(here /  "data" / "sm2_pairwise.csv")
 
-    data = data[data["source"] == "open_notebook"]
+    #data = data[data["source"] == "open_notebook"]
     # data = data[data["source"] == "nova"]
     assert len(data)
 
@@ -431,7 +431,7 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     for col in ['mixture_coefficients a', 'mixture_coefficients b',]:
         data[col] = data[col].apply(eval)
 
-    data = data.sample(1000,random_state=123) # TODO: remove
+    data = data.sample(5000,random_state=123) # TODO: remove
 
     data["conc"] = data["conc diff"]
     add_split_by_col(data,col="solute SMILES",amount_train=0.6,amount_test=0.2,amount_val=0.2,random_seed=123,)
