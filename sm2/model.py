@@ -204,7 +204,7 @@ class SMPredictor(nn.Module):
 
         assert len(temp_a) == len(temp_b)
         assert len(temp_a) == len(graph_feats_solu)
-        return self.predict(torch.hstack([graph_feats_solu,graph_feats_solv_a,graph_feats_solv_b,temp_a,temp_b,]))
+        return self.predict(torch.hstack([graph_feats_solu,graph_feats_solv_a,graph_feats_solv_b,temp_a.reshape(-1,1),temp_b.reshape(-1,1),]))
 
 
 class nmrMPNN(nn.Module):
@@ -420,18 +420,20 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     model_path = str(here / 'checkpoints' / 'model.pt')
     model_metadata_path = str(here / 'checkpoints' / 'model_metadata.pkl')
     #if not os.path.exists(model_path): os.makedirs(model_path)
-    data_pred = pd.DataFrame({"solute SMILES": smis, })
+    data_pred = pd.DataFrame({"solute SMILES": smis, "temp_a": 25, "temp_b": 25,})
     data_pred["solvent SMILES a"] = "CO.CCO" # TODO
     data_pred["solvent SMILES b"] = "CCCCCO.CCO" # TODO
     data_pred["conc"] = 0
-    data_pred["mixture_coefficients a"] = 1
-    data_pred["mixture_coefficients b"] = 0
+    data_pred["mixture_coefficients a"] = [[1] for _ in data_pred.iterrows()]
+    data_pred["mixture_coefficients b"] = [[1] for _ in data_pred.iterrows()]
     data_pred = SMDataset(data_pred)
     #data_pred = pd.DataFrame({"solute SMILES": smis, "solvent SMILES": ["CCO" for _ in smis], "conc": [0 for _ in smis]})
     #data_pred = GraphDataset(data_pred)
     #data = pd.read_csv(here /  "data" / "training_data_singleton.csv")
     #data = GraphDataset(data)
     data = pd.read_csv(here /  "data" / "sm2_pairwise.csv")
+
+    #data = data.sample(1000,random_state=123)
 
     #data = data[data["source"] == "open_notebook"]
     # data = data[data["source"] == "nova"]
@@ -443,8 +445,6 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
 
     for col in ['mixture_coefficients a', 'mixture_coefficients b',]:
         data[col] = data[col].apply(eval)
-
-    data = data.sample(5000,random_state=123) # TODO: remove
 
     data["conc"] = data["conc diff"]
     add_split_by_col(data,col="solute SMILES",amount_train=0.6,amount_test=0.2,amount_val=0.2,random_seed=123,)

@@ -465,7 +465,7 @@ class SMDataset():
         eta = 0.0001
         assert abs(sum(facs_a) - 1) < eta
         assert abs(sum(facs_b) - 1) < eta
-        return g_solu, g_solvas[0], g_solvas[1], facs_a, g_solvbs[0], g_solvbs[1], facs_b, conc, temp_a, temp_b
+        return g_solu, g_solvas[0], g_solvas[1], facs_a, g_solvbs[0], g_solvbs[1], facs_b, temp_a, temp_b, conc
         
         
     def __len__(self):
