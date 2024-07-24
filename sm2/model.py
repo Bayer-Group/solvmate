@@ -414,7 +414,7 @@ def evaluate_ranking(df:pd.DataFrame,experiment_name:str,):
 from smal.all import add_split_by_col
 def run_for_smiles(smis:list[str],experiment_name:str,):
     batch_size = 128
-    use_pretrain = False
+    use_pretrain = True
 
     here = Path(__file__).parent
     model_path = str(here / 'checkpoints' / 'model.pt')
@@ -555,14 +555,31 @@ def _least_squares_solution(g_solu:pd.DataFrame,):
     ).sort_values("conc",ascending=False,)
 
 
-def run_predictions_for_solvents(solute_smiles:str, solvents:list[str],):
-    solvent_smiles_a = [solv_a for solv_a in solvents for solv_b in solvents]
-    solvent_smiles_b = [solv_b for solv_a in solvents for solv_b in solvents]
+def run_predictions_for_solvents(solute_smiles:str, solvents:list[str], temps:list[float]=None,facs:list[list[float]]=None,):
+    solvent_smiles_a = [solv_a for solv_a in solvents for solv_b in solvents ]
+    solvent_smiles_b = [solv_b for solv_a in solvents for solv_b in solvents ]
+
+    if temps is None:
+        temps = [25 for _ in solvents]
+
+    if facs is None:
+        facs = [[1] for _ in solvents]
+
+    temps_a = [temps[i] for i,_ in enumerate(solvents) for _ in solvents]
+    temps_b = [temps[i] for _ in solvents for i,_ in enumerate(solvents)]
+
+    facs_a = [facs[i] for i,_ in enumerate(solvents) for _ in solvents]
+    facs_b = [facs[i] for _ in solvents for i,_ in enumerate(solvents)]
 
     assert isinstance(solute_smiles,str)
     solute_smiles = [solute_smiles for _ in solvent_smiles_a]
 
-    log_s = run_predictions_for_smiles_pairs(solute_smiles=solute_smiles,solvent_smiles_a=solvent_smiles_a,solvent_smiles_b=solvent_smiles_b,)
+    log_s = run_predictions_for_smiles_pairs(solute_smiles=solute_smiles,
+                                             solvent_smiles_a=solvent_smiles_a,
+                                             solvent_smiles_b=solvent_smiles_b,
+                                             facs_a=facs_a, facs_b=facs_b,
+                                             temps_a=temps_a,temps_b=temps_b,
+                                             )
     dfp = pd.DataFrame({
         "solvent SMILES a": solvent_smiles_a,
         "solvent SMILES b": solvent_smiles_b,
@@ -586,12 +603,22 @@ def run_predictions_for_solvents(solute_smiles:str, solvents:list[str],):
         
 
 
-def run_predictions_for_smiles_pairs(solute_smiles:list[str], solvent_smiles_a:list[str], solvent_smiles_b:list[str],):
+def run_predictions_for_smiles_pairs(solute_smiles:list[str], solvent_smiles_a:list[str], solvent_smiles_b:list[str], facs_a:list[list[float]], facs_b:list[list[float]], temps_a:list[float], temps_b:list[float], ):
     batch_size = 128
     here = Path(__file__).parent
     model_path = str(here / 'checkpoints' / 'model.pt')
     model_metadata_path = str(here / 'checkpoints' / 'model_metadata.pkl')
-    data_pred = pd.DataFrame({"solute SMILES": solute_smiles, "solvent SMILES a": solvent_smiles_a, "solvent SMILES b": solvent_smiles_b,})
+    data_pred = pd.DataFrame(
+        {
+            "solute SMILES": solute_smiles,
+            "solvent SMILES a": solvent_smiles_a,
+            "solvent SMILES b": solvent_smiles_b,
+            "temp_a": temps_a,
+            "temp_b": temps_b,
+            "mixture_coefficients a": facs_a,
+            "mixture_coefficients b": facs_b,
+        }
+        )
     data_pred["conc"] = 0
     data_pred = SMDataset(data_pred)
 

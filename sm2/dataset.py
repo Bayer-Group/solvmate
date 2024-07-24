@@ -146,7 +146,6 @@ class GraphDataset():
             try:
                 Chem.SanitizeMol(mol)
                 si = Chem.FindPotentialStereo(mol)
-                #import pdb; pdb.set_trace()
                 mol_probe = Chem.AddHs(mol)
                 atom_types = {atm.GetSymbol() for atm in mol_probe.GetAtoms()}
                 if 'H' not in atom_types and 'C' not in atom_types:
@@ -346,7 +345,6 @@ class SMDataset():
                 try:
                     Chem.SanitizeMol(mol)
                     si = Chem.FindPotentialStereo(mol)
-                    #import pdb; pdb.set_trace()
                     mol_probe = Chem.AddHs(mol)
                     atom_types = {atm.GetSymbol() for atm in mol_probe.GetAtoms()}
                     if 'H' not in atom_types and 'C' not in atom_types:
@@ -401,7 +399,7 @@ class SMDataset():
             if i < len(parts):
                 return parts[i] 
             else:
-                return "O" # placeholder molecule
+                return "CO" # placeholder molecule
 
         self.mol_dict_solva = []
         self.mol_dict_solvb = []
