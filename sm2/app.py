@@ -91,10 +91,12 @@ async def plot_rank_by_solubility(data:dict):
     dfo = run_predictions_for_solvents(solute_smiles=solute_smiles,solvents=solvent_smis,temps=temps,facs=solvent_amounts,)
     dfo = dfo.sort_values("log S",ascending=False,)
     dfo["solvents"] = dfo["solvent SMILES"].map(solvent_smi_to_name)
+
+    dfo["solvents_T"] = dfo["solvents"] + "__" + dfo["temp"]
     
     plt.clf()
     plt.figure(figsize=(10,2+len(dfo)//8))
-    sns.barplot(data=dfo,x="log S",y="solvents")
+    sns.barplot(data=dfo,x="log S",y="solvents_T")
     buf = io.StringIO()
     plt.tight_layout(w_pad=2,h_pad=2)
     plt.savefig(buf,format="svg")

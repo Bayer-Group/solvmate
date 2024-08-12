@@ -511,14 +511,14 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
 
 
 
-def _least_squares_solution(g_solu:pd.DataFrame,):
+def _least_squares_solution(g_solu:pd.DataFrame,id_col:str,):
     """
     Orders the given per-solute dataframe by applying least squares
     procedure on the pairwise differences.
 
     >>> order = "abcd"
     >>> g = pd.DataFrame([{"solvent SMILES a": val_a, "solvent SMILES b": val_b, "conc": order.index(val_b) - order.index(val_a)} for val_a in order for val_b in order])
-    >>> _least_squares_solution(g) #["conc"].tolist() # doctest: +NORMALIZE_WHITESPACE
+    >>> _least_squares_solution(g,id_col="solvent SMILES") #["conc"].tolist() # doctest: +NORMALIZE_WHITESPACE
         solvent SMILES  conc
     3              d   1.5
     2              c   0.5
@@ -526,7 +526,11 @@ def _least_squares_solution(g_solu:pd.DataFrame,):
     0              a  -1.5
     
     """
-    solv_to_idx = list(sorted(set(g_solu["solvent SMILES b"].tolist())))
+    id_col_a = " ".join([id_col,"a"])
+    id_col_b = " ".join([id_col,"b"])
+    assert id_col_a in g_solu.columns
+    assert id_col_b in g_solu.columns
+    solv_to_idx = list(sorted(set(g_solu[id_col_b].tolist())))
     solv_to_idx = {smi: idx for idx,smi in enumerate(solv_to_idx)}
     N = len(solv_to_idx)
     M = []
@@ -534,8 +538,11 @@ def _least_squares_solution(g_solu:pd.DataFrame,):
 
     for _,row in g_solu.iterrows():
         m = np.zeros(N)
-        ia = solv_to_idx[row["solvent SMILES a"]]
-        ib = solv_to_idx[row["solvent SMILES b"]]
+        try:
+            ia = solv_to_idx[row[id_col_a]]
+            ib = solv_to_idx[row[id_col_b]]
+        except:
+            import pdb; pdb.set_trace()
         m[ia] = - 1
         m[ib] = 1
         
@@ -547,7 +554,7 @@ def _least_squares_solution(g_solu:pd.DataFrame,):
     #g_solu["absolute_ordering"] = g_solu["solvent SMILES b"].apply(lambda smi: solution[solv_to_idx[smi]])
 
     return pd.DataFrame([{
-        "solvent SMILES": smi,
+        id_col: smi,
         "conc": solution[idx],
     }
         for smi,idx in solv_to_idx.items()
@@ -583,14 +590,20 @@ def run_predictions_for_solvents(solute_smiles:str, solvents:list[str], temps:li
     dfp = pd.DataFrame({
         "solvent SMILES a": solvent_smiles_a,
         "solvent SMILES b": solvent_smiles_b,
+        "temp a": temps_a,
+        "temp b": temps_b,
         "log S": list(log_s.reshape(-1)),
         "solute SMILES": solute_smiles,
     })
+
+    dfp["exp_id a"] = dfp["solvent SMILES a"] + "__" + dfp["temp a"].apply(str)
+    dfp["exp_id b"] = dfp["solvent SMILES b"] + "__" + dfp["temp b"].apply(str)
+
     dfo = []
     for solu in dfp["solute SMILES"].unique():
         g_solu = dfp[dfp["solute SMILES"] == solu]
         g_solu["conc"] = g_solu["log S"]
-        g_rank = _least_squares_solution(g_solu)
+        g_rank = _least_squares_solution(g_solu, "exp_id")
         g_rank["log S"] = g_rank["conc"]
         g_rank["solute SMILES"] = solu
         dfo.append(g_rank)
@@ -599,6 +612,8 @@ def run_predictions_for_solvents(solute_smiles:str, solvents:list[str], temps:li
         # dfo.append({"solute SMILES": solu, "solvent SMILES": solv, "log S": g_solu_solv["log S"].sum(),})
     
     dfo = pd.concat(dfo)
+    dfo["solvent SMILES"] = dfo["exp_id"].apply(lambda ei: ei.split("__")[0])
+    dfo["temp"] = dfo["exp_id"].apply(lambda ei: ei.split("__")[1])
     return dfo
         
 
