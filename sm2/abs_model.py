@@ -23,7 +23,7 @@ from dgl.data.utils import split_dataset
 
 from dataset import GraphDataset
 from abs_dataset import SMAbsDataset
-from util import collate_reaction_graphs, store_result, path_for_experiment_and_fle
+from util import collate_reaction_graphs_abs, store_result, path_for_experiment_and_fle
 
 from sklearn.metrics import mean_absolute_error,r2_score
 from scipy import stats
@@ -159,7 +159,7 @@ class SMAbsPredictor(nn.Module):
                                n_layers=num_layer_set2set)
         self.predict = nn.Sequential(
             # 2 (=? ) * 3 (= solv_a,solv_b,solu) + 2 (= temp_a,temp_b)
-            nn.Linear(2 * 2 * node_out_feats + 2, node_out_feats),
+            nn.Linear(2 * 2 * node_out_feats + 1, node_out_feats),
             nn.ReLU(),
             nn.Linear(node_out_feats, n_tasks)
         )
@@ -173,12 +173,12 @@ class SMAbsPredictor(nn.Module):
         # Solvent Block
         node_feats_solv_b1 = g_solv_1.ndata['node_attr']
         edge_feats_solv_b1 = g_solv_1.edata['edge_attr']
-        node_feats_solv_b1 = self.gnn_solv_b(g_solv_1, node_feats_solv_b1, edge_feats_solv_b1)
+        node_feats_solv_b1 = self.gnn_solv(g_solv_1, node_feats_solv_b1, edge_feats_solv_b1)
         graph_feats_solv_b1 = self.readout(g_solv_1, node_feats_solv_b1)
 
         node_feats_solv_b2 = g_solv_2.ndata['node_attr']
         edge_feats_solv_b2 = g_solv_2.edata['edge_attr']
-        node_feats_solv_b2 = self.gnn_solv_b(g_solv_2, node_feats_solv_b2, edge_feats_solv_b2)
+        node_feats_solv_b2 = self.gnn_solv(g_solv_2, node_feats_solv_b2, edge_feats_solv_b2)
         graph_feats_solv_b2 = self.readout(g_solv_2, node_feats_solv_b2)
 
         graph_feats_solv_b = g_solv_facs[:,0].reshape(-1,1) * graph_feats_solv_b1 + g_solv_facs[:,1].reshape(-1,1) * graph_feats_solv_b2
@@ -355,10 +355,10 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     #data = SMDataset(data)
     #train_set, val_set, test_set = split_dataset(data, data_split, shuffle=True, random_state=random_seed)
 
-    train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, collate_fn=collate_reaction_graphs, drop_last=True)
-    val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False, collate_fn=collate_reaction_graphs)
-    test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False, collate_fn=collate_reaction_graphs)
-    pred_loader = DataLoader(dataset=data_pred, batch_size=batch_size, shuffle=False, collate_fn=collate_reaction_graphs)
+    train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True, collate_fn=collate_reaction_graphs_abs, drop_last=True)
+    val_loader = DataLoader(dataset=val_set, batch_size=batch_size, shuffle=False, collate_fn=collate_reaction_graphs_abs)
+    test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False, collate_fn=collate_reaction_graphs_abs)
+    pred_loader = DataLoader(dataset=data_pred, batch_size=batch_size, shuffle=False, collate_fn=collate_reaction_graphs_abs)
 
     train_y = np.hstack([inst[-1] for inst in iter(train_loader.dataset)])
     train_y_mean = np.mean(train_y.reshape(-1))

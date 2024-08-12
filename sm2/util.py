@@ -21,6 +21,18 @@ def collate_reaction_graphs(batch):
     facs_b = torch.FloatTensor(np.array(facs_b))
     return g_solu, g_solva_1, g_solva_2, facs_a, g_solvb_1, g_solvb_2, facs_b, temp_a, temp_b, conc
 
+def collate_reaction_graphs_abs(batch):
+    g_solu, g_solv_1, g_solv_2, facs, temp, conc = map(list, zip(*batch))
+    
+    g_solu = dgl.batch(g_solu)
+    g_solv_1 = dgl.batch(g_solv_1)
+    g_solv_2 = dgl.batch(g_solv_2)
+
+    conc = torch.FloatTensor(np.hstack(conc))
+    temp = torch.FloatTensor(np.hstack(temp))
+    facs = torch.FloatTensor(np.array(facs))
+    return g_solu, g_solv_1, g_solv_2, facs, temp, conc
+
 
 def MC_dropout(model):
 
