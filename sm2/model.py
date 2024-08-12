@@ -560,7 +560,7 @@ def run_predictions_for_solvents(solute_smiles:str, solvents:list[str], temps:li
     solvent_smiles_b = [solv_b for solv_a in solvents for solv_b in solvents ]
 
     if temps is None:
-        temps = [25 for _ in solvents]
+        temps = [0 for _ in solvents]
 
     if facs is None:
         facs = [[1] for _ in solvents]

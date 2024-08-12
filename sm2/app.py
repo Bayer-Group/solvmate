@@ -1,6 +1,7 @@
 import base64
 import io
 from pathlib import Path
+import re
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -10,7 +11,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 from sm2.model import run_predictions_for_solvents
-from solvmate.ccryst.solvent import solvent_mixture_iupac_to_smiles
+from solvmate.ccryst.solvent import iupac_solvent_mixture_to_amounts, solvent_mixture_iupac_to_smiles
 
 
 app = FastAPI()
@@ -40,15 +41,54 @@ def _parse_in_order(funs, txt):
                 return rslt
     return None
 
+
+def _extract_temperatures(solvents:str,):
+    # Strip any temperature specifications, e.g. '250C, 298K' from 
+    # the solvent text. Translate it accordingly
+    temps = []
+    stripped_solvents = []
+    for solv in solvents:
+        parts = solv.split()
+        stripped_parts = []
+        # 0 == 25 C == 298.15 K
+        temp = 0
+        for part in parts:
+            mtch_C = re.match(r"([+-]?([0-9]*[.])?[0-9]+)C",part)
+            mtch_K = re.match(r"([+-]?([0-9]*[.])?[0-9]+)K",part)
+            if mtch_C:
+                temp = float(mtch_C.group(1)) - 25
+            elif mtch_K:
+                temp = float(mtch_K.group(1)) - 273.15
+            else:
+                # it's not a temp spec so append
+                stripped_parts.append(part)
+
+        temps.append(temp)
+        stripped_solvents.append(" ".join(stripped_parts))
+
+    assert len(temps) == len(solvents)
+    assert len(temps) == len(stripped_solvents)
+    return temps,stripped_solvents
+        
+
 @app.post("/plot-rank-by-solubility/")
 async def plot_rank_by_solubility(data:dict):
     solute_smiles = data["solute SMILES"]
     solvents = data["solvents"]
 
+    temps,solvents = _extract_temperatures(solvents)
+
+    solvent_amounts = [iupac_solvent_mixture_to_amounts(solv) for solv in solvents]
     solvent_smis = [_parse_in_order([solvent_mixture_iupac_to_smiles,_safe_from_smiles], solv) for solv in solvents]
+    # unpack the solvent amounts so that we get instead of a dictionary the
+    # solvent amount vector, instead.
+    solvent_amounts =  [
+        [samnt.get(s,1)/len(list(smix.split("."))) for s in smix.split(".")]
+        for samnt,smix in zip(solvent_amounts,solvent_smis)
+    ]
     solvent_smis = [smi for smi in solvent_smis if smi]
     solvent_smi_to_name = {smi:nme for smi,nme in zip(solvent_smis,solvents)}
-    dfo = run_predictions_for_solvents(solute_smiles=solute_smiles,solvents=solvent_smis,)
+    dfo = run_predictions_for_solvents(solute_smiles=solute_smiles,solvents=solvent_smis,temps=temps,facs=solvent_amounts,)
     dfo = dfo.sort_values("log S",ascending=False,)
     dfo["solvents"] = dfo["solvent SMILES"].map(solvent_smi_to_name)
     
