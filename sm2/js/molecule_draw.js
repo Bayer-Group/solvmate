@@ -61,6 +61,20 @@ const runRanking = function () {
         );
     }
 };
+
+const runTCurve = function () {
+    const ketcher = getKetcher('ifKetcher');
+    if (ketcher) {
+        ketcher.getSmiles().then(
+            smiles => {
+                API_SMILES = smiles;
+                update_model_t_curve();
+                update_view_t_curve();
+            }
+        );
+    }
+};
+
 const showKetcher = async function () {
     const vis = document.getElementById("ketcherModal").style.visibility;
     document.getElementById("ketcherModal").style.visibility = vis === "visible" ? "hidden" : "visible";

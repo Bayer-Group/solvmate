@@ -38,3 +38,15 @@ const update_model = function () {
         res => update_plot_view(res)
     );
 };
+
+const update_model_t_curve = function () {
+    document.getElementById("status-message").innerText = "calculating ...";
+
+    fetch("/plot-t-curve", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ "solute SMILES": API_SMILES, "solvents": get_selected_solvents(), })
+    }).then(res => res.json()).then(
+        res => update_plot_view(res)
+    );
+};

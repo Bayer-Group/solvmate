@@ -102,3 +102,57 @@ async def plot_rank_by_solubility(data:dict):
     plt.savefig(buf,format="svg")
     plt.clf()
     return {"svg": buf.getvalue(),}
+
+def _extend_dataframe_with_temp_range(df:pd.DataFrame,start,end,step,):
+    df_ext = []
+    temps = []
+    for _,row in df.iterrows():
+        for T in range(start,end+step,step):
+            temps.append(T)
+            df_ext.append(row)
+    df_ext = pd.DataFrame(df_ext)
+    df_ext["T"] = temps
+    df_ext["temp"] = temps
+    #assert df_ext.columns == df.columns
+    return df_ext
+
+
+@app.post("/plot-t-curve/")
+async def plot_rank_by_solubility(data:dict):
+    solute_smiles = data["solute SMILES"]
+    solvents = data["solvents"]
+
+    #temps,solvents = _extract_temperatures(solvents)
+    temp_start = -50 - 25 # convert from degrees
+    temp_end = +50 - 25 # convert from degrees
+    temp_step = 10 
+
+    solvent_amounts = [iupac_solvent_mixture_to_amounts(solv) for solv in solvents]
+    solvent_smis = [_parse_in_order([solvent_mixture_iupac_to_smiles,_safe_from_smiles], solv) for solv in solvents]
+
+    # unpack the solvent amounts so that we get instead of a dictionary the
+    # solvent amount vector, instead.
+    solvent_amounts =  [
+        [samnt.get(s,1)/len(list(smix.split("."))) for s in smix.split(".")]
+        for samnt,smix in zip(solvent_amounts,solvent_smis)
+    ]
+    solvent_smis = [smi for smi in solvent_smis if smi]
+    solvent_smi_to_name = {smi:nme for smi,nme in zip(solvent_smis,solvents)}
+
+    df_t_ext = _extend_dataframe_with_temp_range(pd.DataFrame({"solvent_smis": solvent_smis, "solvent_amounts": solvent_amounts,}),temp_start,temp_end,temp_step,)
+    solvent_smis = df_t_ext["solvent_smis"].tolist()
+    solvent_amounts = df_t_ext["solvent_amounts"].tolist()
+    temps = df_t_ext["temp"].tolist()
+
+    dfo = run_predictions_for_solvents(solute_smiles=solute_smiles,solvents=solvent_smis,temps=temps,facs=solvent_amounts,)
+    dfo["solvents"] = dfo["solvent SMILES"].map(solvent_smi_to_name)
+    # dfo["solvents_T"] = dfo["solvents"] + "__" + dfo["temp"]
+    
+    plt.clf()
+    plt.figure(figsize=(10,2+len(dfo)//8))
+    sns.scatterplot(data=dfo,y="log S",x="temp",hue="solvents")
+    buf = io.StringIO()
+    plt.tight_layout(w_pad=2,h_pad=2)
+    plt.savefig(buf,format="svg")
+    plt.clf()
+    return {"svg": buf.getvalue(),}
