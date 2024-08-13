@@ -493,7 +493,6 @@ def _least_squares_solution(g_solu:pd.DataFrame,id_col:str,include_abs_calcs=Tru
             b.append(float(row))
 
     M = np.vstack(M)
-    import pdb; pdb.set_trace()
     solution = np.linalg.lstsq(M, b, rcond=None)[0]
     #g_solu["absolute_ordering"] = g_solu["solvent SMILES b"].apply(lambda smi: solution[solv_to_idx[smi]])
 
