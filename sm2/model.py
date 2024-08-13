@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader
 from dgl.data.utils import split_dataset
 
 from dataset import GraphDataset
+from abs_model import run_for_smiles_abs
 from util import collate_reaction_graphs, store_result, path_for_experiment_and_fle
 
 from sklearn.metrics import mean_absolute_error,r2_score
@@ -435,14 +436,14 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
 
 
 
-def _least_squares_solution(g_solu:pd.DataFrame,id_col:str,):
+def _least_squares_solution(g_solu:pd.DataFrame,id_col:str,include_abs_calcs=True,):
     """
     Orders the given per-solute dataframe by applying least squares
     procedure on the pairwise differences.
 
     >>> order = "abcd"
     >>> g = pd.DataFrame([{"solvent SMILES a": val_a, "solvent SMILES b": val_b, "conc": order.index(val_b) - order.index(val_a)} for val_a in order for val_b in order])
-    >>> _least_squares_solution(g,id_col="solvent SMILES") #["conc"].tolist() # doctest: +NORMALIZE_WHITESPACE
+    >>> _least_squares_solution(g,id_col="solvent SMILES",include_abs_calcs=False,) #["conc"].tolist() # doctest: +NORMALIZE_WHITESPACE
         solvent SMILES  conc
     3              d   1.5
     2              c   0.5
@@ -454,7 +455,8 @@ def _least_squares_solution(g_solu:pd.DataFrame,id_col:str,):
     id_col_b = " ".join([id_col,"b"])
     assert id_col_a in g_solu.columns
     assert id_col_b in g_solu.columns
-    solv_to_idx = list(sorted(set(g_solu[id_col_b].tolist())))
+    g_solu_us = g_solu.drop_duplicates(id_col_b)
+    solv_to_idx = g_solu_us[id_col_b].tolist()
     solv_to_idx = {smi: idx for idx,smi in enumerate(solv_to_idx)}
     N = len(solv_to_idx)
     M = []
@@ -462,18 +464,36 @@ def _least_squares_solution(g_solu:pd.DataFrame,id_col:str,):
 
     for _,row in g_solu.iterrows():
         m = np.zeros(N)
-        try:
-            ia = solv_to_idx[row[id_col_a]]
-            ib = solv_to_idx[row[id_col_b]]
-        except:
-            import pdb; pdb.set_trace()
+        ia = solv_to_idx[row[id_col_a]]
+        ib = solv_to_idx[row[id_col_b]]
         m[ia] = - 1
         m[ib] = 1
         
         b.append(row["conc"])
         M.append(m)
+    
+    N_exps = g_solu[id_col_b].nunique()
+    assert N_exps == N
+    if include_abs_calcs:
+        # If absolute calculations are to be included when solving the lin eqs,
+        # then this means that in addition to the pairwise terms a -b  = dS
+        # we also add terms of the a 0 = S
+        # for each unique solvent smiles that we found
+        M_abs = np.eye(N)
+        b_abs = run_for_smiles_abs(
+            smis=g_solu_us["solute SMILES"].tolist(),
+            experiment_name="preds_",
+            solvent_smis=g_solu_us["solvent SMILES b"].tolist(),
+            facs=g_solu_us["mixture coefficients b"].tolist(),
+            temps=g_solu_us["temp b"].tolist(),
+            )
+        for m in M_abs:
+            M.append(m)
+        for row in b_abs:
+            b.append(float(row))
 
     M = np.vstack(M)
+    import pdb; pdb.set_trace()
     solution = np.linalg.lstsq(M, b, rcond=None)[0]
     #g_solu["absolute_ordering"] = g_solu["solvent SMILES b"].apply(lambda smi: solution[solv_to_idx[smi]])
 
@@ -518,6 +538,8 @@ def run_predictions_for_solvents(solute_smiles:str, solvents:list[str], temps:li
         "temp b": temps_b,
         "log S": list(log_s.reshape(-1)),
         "solute SMILES": solute_smiles,
+        "mixture coefficients a": facs_a,
+        "mixture coefficients b": facs_b,
     })
 
     dfp["exp_id a"] = dfp["solvent SMILES a"] + "__" + dfp["temp a"].apply(str)

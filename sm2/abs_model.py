@@ -310,10 +310,53 @@ def evaluate_ranking(df:pd.DataFrame,experiment_name:str,):
 
 
 
+def run_for_smiles_abs(smis:list[str],experiment_name:str,solvent_smis:list[str]=None,facs:list[list[float]]=None,temps:list[float]=None,):
+    batch_size = 128
+    use_pretrain = True
+
+    here = Path(__file__).parent
+    model_path = str(here / 'checkpoints' / 'abs_model.pt')
+    model_metadata_path = str(here / 'checkpoints' / 'abs_model_metadata.pkl')
+    #if not os.path.exists(model_path): os.makedirs(model_path)
+    data_pred = pd.DataFrame({"solute SMILES": smis,  })
+    if not temps:
+        data_pred["T"] = 25
+    else:
+        data_pred["T"] = temps
+    
+    data_pred["temp"] = data_pred["T"]
+    data_pred["conc"] = 0
+
+    if solvent_smis is None:
+        data_pred["solvent SMILES"] = "CO" # TODO
+    else:
+        data_pred["solvent SMILES"] = solvent_smis
+    if facs is None:
+        data_pred["mixture_coefficients"] = [[1] for _ in data_pred.iterrows()]
+    else:
+        data_pred["mixture_coefficients"] = facs
+
+    data_pred = SMAbsDataset(data_pred)
+
+    pred_loader = DataLoader(dataset=data_pred, batch_size=batch_size, shuffle=False, collate_fn=collate_reaction_graphs_abs)
+
+    node_dim = data_pred.mol_dict_solu["node_attr"].shape[1]
+    edge_dim = data_pred.mol_dict_solu["edge_attr"].shape[1]
+    net = SMAbsPredictor(node_dim, edge_dim).cuda()
+    net.load_state_dict(torch.load(model_path))
+
+    model_metadata = joblib.load(model_metadata_path)
+    train_y_mean = model_metadata["train_y_mean"]
+    train_y_std = model_metadata["train_y_std"]
+
+    return inference(net,pred_loader, train_y_mean, train_y_std)
+
+
 
 
 from smal.all import add_split_by_col
-def run_for_smiles(smis:list[str],experiment_name:str,):
+
+def run_for_smiles_full(smis:list[str],experiment_name:str,solvent_smis:list[str]=None,facs:list[list[float]]=None,temps:list[float]=None,):
     batch_size = 128
     use_pretrain = True
 
@@ -322,9 +365,23 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
     model_metadata_path = str(here / 'checkpoints' / 'abs_model_metadata.pkl')
     #if not os.path.exists(model_path): os.makedirs(model_path)
     data_pred = pd.DataFrame({"solute SMILES": smis, "T": 25, "temp": 25, })
-    data_pred["solvent SMILES"] = "CO" # TODO
+    if not temps:
+        data_pred["T"] = 25
+    else:
+        data_pred["T"] = temps
+    
+    data_pred["temp"] = data_pred["T"]
     data_pred["conc"] = 0
-    data_pred["mixture_coefficients"] = [[1] for _ in data_pred.iterrows()]
+
+    if solvent_smis is None:
+        data_pred["solvent SMILES"] = "CO" # TODO
+    else:
+        data_pred["solvent SMILES"] = solvent_smis
+    if facs is None:
+        data_pred["mixture_coefficients"] = [[1] for _ in data_pred.iterrows()]
+    else:
+        data_pred["mixture_coefficients"] = facs
+
     data_pred = SMAbsDataset(data_pred)
     data = pd.read_csv(here /  "data" / "training_data_sm2.csv")
 
@@ -408,5 +465,5 @@ def run_for_smiles(smis:list[str],experiment_name:str,):
 if __name__ == "__main__":
 
     print(
-        run_for_smiles(["CCOCC"],experiment_name="absolute_solub_model",)
+        run_for_smiles_full(["CCOCC"],experiment_name="absolute_solub_model",)
     )
