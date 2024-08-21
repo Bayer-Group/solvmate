@@ -14,6 +14,10 @@ RUN apt-get update && \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update
+
+RUN apt-get install -y wget && apt-get install -y unzip && apt-get update && apt-get install -y libxrender1 libxext6 && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
+
 # Install Miniconda
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
@@ -47,7 +51,19 @@ RUN /bin/bash -c "source activate myenv && \
     pip install seaborn==0.11.2 && \
     pip install xmltodict && \
     pip install scikit-learn && \
+    pip install xtbf && \
     pip install rdkit"
 
+COPY . /solvmate
+
+ENV PYTHONPATH="/solvmate/src:${PYTHONPATH}"
+ENV PYTHONPATH="/solvmate/:${PYTHONPATH}"
+
 # Set the default command to bash
-CMD ["/bin/bash"]
+# CMD ["/bin/bash"]
+
+# bash -c "source activate myenv" && fastapi dev --port 8890 --host 0.0.0.0 /solvmate/sm2/app.py
+# source activate myenv
+# ENTRYPOINT [ "python", "/solvmate/src/solvmate/app/app.py" ]
+# ENTRYPOINT "source activate myenv && fastapi dev --port 8890 --host 0.0.0.0 /solvmate/sm2/app.py"
+ENTRYPOINT ["bash", "/solvmate/run_app_docker.sh"]
