@@ -73,7 +73,7 @@ docker_build:
 	docker build --build-arg HTTP_PROXY=$$HTTP_PROXY --build-arg HTTPS_PROXY=$$HTTPS_PROXY --build-arg http_proxy=$$http_proxy --build-arg https_proxy=$$https_proxy -t solvmate:latest .
 
 docker_run:
-	(docker rm "/solvmate-server" || true) && docker run --name solvmate-server -p 8890:8890 solvmate:latest
+	(docker rm -f "/solvmate-server" || true) && docker run --name solvmate-server -p 8890:8890 solvmate:latest
 
 
 paper:

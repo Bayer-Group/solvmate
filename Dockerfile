@@ -15,8 +15,10 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update
-
 RUN apt-get install -y wget && apt-get install -y unzip && apt-get update && apt-get install -y libxrender1 libxext6 && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
+RUN apt-get update
+RUN apt-get install -y openjdk-11-jdk && rm -rf /var/lib/apt/lists/*
+
 
 # Install Miniconda
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \

@@ -196,6 +196,9 @@ class SMAbsPredictor(nn.Module):
         
 def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_path, n_forward_pass = 5, cuda = torch.device('cuda:0'), experiment_name=None):
 
+    if not torch.cuda.is_available():
+        cuda = torch.device("cpu")
+
     train_size = train_loader.dataset.__len__()
     batch_size = train_loader.batch_size
 
@@ -272,6 +275,9 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
 
 def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, cuda = torch.device('cuda:0')):
 
+    if not torch.cuda.is_available():
+        cuda = torch.device("cpu")
+
     net.eval()
     #MC_dropout(net)
     with torch.no_grad():
@@ -342,8 +348,15 @@ def run_for_smiles_abs(smis:list[str],experiment_name:str,solvent_smis:list[str]
 
     node_dim = data_pred.mol_dict_solu["node_attr"].shape[1]
     edge_dim = data_pred.mol_dict_solu["edge_attr"].shape[1]
-    net = SMAbsPredictor(node_dim, edge_dim).cuda()
-    net.load_state_dict(torch.load(model_path))
+
+    if torch.cuda.is_available():
+        net = SMAbsPredictor(node_dim, edge_dim).cuda()
+        net.load_state_dict(torch.load(model_path))
+    else:
+        net = SMAbsPredictor(node_dim, edge_dim)
+        net.load_state_dict(torch.load(model_path,
+            map_location=torch.device('cpu')
+                                       ))
 
     model_metadata = joblib.load(model_metadata_path)
     train_y_mean = model_metadata["train_y_mean"]
@@ -423,7 +436,9 @@ def run_for_smiles_full(smis:list[str],experiment_name:str,solvent_smis:list[str
 
     node_dim = data.mol_dict_solu["node_attr"].shape[1]
     edge_dim = data.mol_dict_solu["edge_attr"].shape[1]
-    net = SMAbsPredictor(node_dim, edge_dim).cuda()
+
+    if torch.cuda.is_available():
+        net = SMAbsPredictor(node_dim, edge_dim).cuda()
 
     print('-- CONFIGURATIONS')
     print('--- data_size:', data.__len__())
@@ -439,7 +454,13 @@ def run_for_smiles_full(smis:list[str],experiment_name:str,solvent_smis:list[str
         net = training(net, train_loader, val_loader, train_y_mean, train_y_std, model_path,experiment_name=experiment_name,)
     else:
         print('-- LOAD SAVED MODEL')
-        net.load_state_dict(torch.load(model_path))
+        if torch.cuda.is_available():
+            net.load_state_dict(torch.load(model_path))
+        else:
+            net.load_state_dict(
+            torch.load(model_path,
+            map_location=torch.device('cpu'),)
+            )
 
 
 

@@ -291,6 +291,9 @@ def training(net, train_loader, val_loader, train_y_mean, train_y_std, model_pat
 
 def inference(net, test_loader, train_y_mean, train_y_std, n_forward_pass = 30, cuda = torch.device('cuda:0')):
 
+    if not torch.cuda.is_available():
+        cuda = torch.device("cpu")
+
     net.eval()
     #MC_dropout(net)
     with torch.no_grad():
@@ -586,8 +589,12 @@ def run_predictions_for_smiles_pairs(solute_smiles:list[str], solvent_smiles_a:l
 
     node_dim = data_pred.mol_dict_solu["node_attr"].shape[1]
     edge_dim = data_pred.mol_dict_solu["edge_attr"].shape[1]
-    net = SMPredictor(node_dim, edge_dim).cuda()
-    net.load_state_dict(torch.load(model_path))
+    if torch.cuda.is_available():
+        net = SMPredictor(node_dim, edge_dim).cuda()
+        net.load_state_dict(torch.load(model_path),)
+    else:
+        net = SMPredictor(node_dim, edge_dim)
+        net.load_state_dict(torch.load(model_path,map_location=torch.device('cpu')))
 
     metadata = joblib.load(model_metadata_path,)
     train_y_mean = metadata["train_y_mean"]
