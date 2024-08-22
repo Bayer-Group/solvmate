@@ -1,0 +1,31 @@
+
+- Set up a dataset that will be able to load
+  in molecular pairs (mol1,mol2). For this
+  we will have to adapt ugly the dataloader code...
+
+- There will be two Networks: 
+  * An Encoder NN that will encode
+    molecular graphs into vectors.
+  * An Interaction NN that will reduce all
+    information (solute,solvent-1,solvent-2,Temperature)
+    into a final solubility prediction...
+
+  BUT:
+  ----
+  We will have a pair, so therefore we will have two of them:
+
+	A: solute, solvent-1, solvent-2, T
+		vs. 
+	B: solute, solvent-1, solvent-2, T
+
+ Idea:
+ -----
+ Subtract the embeddings. Because we are having NN embeddings,
+ the subtraction should not lead to the same loss of information
+ as we had it with the ET.
+    
+
+
+
+
+
