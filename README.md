@@ -51,6 +51,16 @@ Visit the web app at
 http://127.0.0.1:8890/main
 ```
 
+### Limitations
+Only works well for drug-like compounds.
+Have a look at the underlying datasets to see on what chemical space these models are trained on:
+Open Notebook Science Solublity Challenge[^1] 
+and *Towards the Prediction of Drug Solubility in Binary Solvent Mixtures at Various Temperatures Using Machine Learning*
+by Bao et al.[^2]
+
+[^1]: https://figshare.com/articles/dataset/Open_Notebook_Science_Challenge_Solubility_Dataset/1514952?file=2217769
+[^2]: https://www.researchsquare.com/article/rs-4170106/v1
+
 ### Usage
 After visiting the main url, we are presented with the frontend:
 <img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/doc/usage_1.png" alt="screenshot" width="600"/>
