@@ -56,23 +56,29 @@ After visiting the main url, we are presented with the frontend:
 <img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/doc/usage_1.png" alt="screenshot" width="600"/>
 
 First we click on "draw API" and are presented with an empty molecule editor canvas:
+
 <img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/doc/usage_2.png" alt="screenshot" width="600"/>
 
 We draw lenacapavir as an example molecule:
+
 <img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/doc/usage_3.png" alt="screenshot" width="600"/>
 
 After accepting the dialog a sketch of the molecule appears on the header of the main app:
+
 <img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/doc/usage_5.png" alt="screenshot" width="600"/>
 
 Next, we can select one of five solvent sets, from the solvents option:
+
 <img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/doc/usage_6.png" alt="screenshot" width="600"/>
 
 Solvents can be freely edited by the user in both IUPAC and SMILES formats. Commonly used abbreviations are also supported,
 but we advise using IUPAC names that are convenient, while avoiding possible ambiguities caused from abbreviations.
 Note that arbitrary solvents are supported.
+
 <img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/doc/usage_7.png" alt="screenshot" width="600"/>
 
 Finally, we click on rank to obtain a ranking of the different solvents.
+
 <img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/doc/usage_8.png" alt="screenshot" width="600"/>
 
 In the above picture, different solvents are ranked according to their solubility. on the vertical axis, more
