@@ -97,9 +97,9 @@ Open Notebook Science Solublity Challenge[^1]
 and *Towards the Prediction of Drug Solubility in Binary Solvent Mixtures at Various Temperatures Using Machine Learning*
 by Bao et al.[^2]
 
-In case any other limitations/bugs are found, please file an issue in the github repository here:
-https://github.com/Bayer-Group/solvmate/issues
-or contact us by email otherwise (see publications for contact information). 
+> In case any other limitations/bugs are found, please file an issue in the github repository here:
+> https://github.com/Bayer-Group/solvmate/issues
+> or contact us by email otherwise (see publications for contact information). 
 
 [^1]: https://figshare.com/articles/dataset/Open_Notebook_Science_Challenge_Solubility_Dataset/1514952?file=2217769
 [^2]: https://www.researchsquare.com/article/rs-4170106/v1
