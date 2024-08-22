@@ -1,3 +1,5 @@
+> Refers to version 1.0
+
 # Install XTB
 For M1 Macs:
 Install using homebrew as described here: https://github.com/grimme-lab/homebrew-qc
