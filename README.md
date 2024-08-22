@@ -1,7 +1,8 @@
 <!--<img src="/logo.png" width="200">-->
-<img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/js/hydro_banner.svg" alt="Solvmate 2.0 Logo" width="300"/>
 
-# Solvmate 
+
+# Solvmate 2.0
+<img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/js/hydro_banner.svg" alt="Solvmate 2.0 Logo" width="300"/>
 
 A practical web application for the recommendation of organic solvents
 based on the paper 
@@ -14,6 +15,8 @@ based on the paper
 Given a compound as SMILES, and set of solvents as IUPAC names,
 the solvents are recommended in increasing solubility.
 
+For the original version described in the publication, see v0.1 release under releases.
+
 # Getting Started
 ## Installation
 After cloning the repository,
@@ -24,7 +27,8 @@ change into the main repository where there is a Makefile containing a listing
 of all commonly used operations.
 
 ### Running with docker
-We recommend building a docker container by issuing
+We recommend using docker, because it simplifies installation/running the web app.
+Build the container with the command
 ```
 make docker_build
 ```
@@ -46,4 +50,7 @@ Visit the web app at
 ```
 http://127.0.0.1:8890/main
 ```
+
+### Usage
+TODO
 
