@@ -1,6 +1,3 @@
-<!--<img src="/logo.png" width="200">-->
-
-
 # Solvmate 2.0
 <img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/js/hydro_banner.svg" alt="Solvmate 2.0 Logo" width="600"/>
 
@@ -51,24 +48,6 @@ Visit the web app at
 http://127.0.0.1:8890/main
 ```
 
-### Limitations
-Limitations that are currently known:
-- Both v1.0 and v2.0 models tend to be biased towards the usually good solvents, e.g. DMSO and
-  and DMF often occupy the top rank, even for highly unpolar compounds.
-- Very similar solvents are hard to differentiate (e.g. 2-propanol vs. 1-propanol vs. 1-butanol)
-- Salts / charged groups are heavily underrepresented in the training data, and typically very large
-  errors are observed here.[^A]
-- Only works well for drug-like compounds.
-Have a look at the underlying datasets to see on what chemical space these models are trained on:
-Open Notebook Science Solublity Challenge[^1] 
-and *Towards the Prediction of Drug Solubility in Binary Solvent Mixtures at Various Temperatures Using Machine Learning*
-by Bao et al.[^2]
-
-[^1]: https://figshare.com/articles/dataset/Open_Notebook_Science_Challenge_Solubility_Dataset/1514952?file=2217769
-[^2]: https://www.researchsquare.com/article/rs-4170106/v1
-[^A]: This is really mostly a limitation coming from the limited available data. We would be very happy to hear from (publically available) organic solubility datasets with charged solutes, and
-would readily integrate them into training of the models.
-
 ### Usage
 After visiting the main url, we are presented with the frontend:
 <img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/doc/usage_1.png" alt="screenshot" width="600"/>
@@ -104,4 +83,27 @@ suitable solvents are shown on the top, less suitable solvents (low predicted so
 The horizontal axis gives a prediction of the absolute solubility log S of the compound in units of mol / L.
 Absolute solubility calculations have to be seen critical, as they are largely influenced by the crystal lattice energy,
 which is difficult to estimate.
+
+### Limitations
+Limitations that are currently known:
+- Both v1.0 and v2.0 models tend to be biased towards the usually good solvents, e.g. DMSO and
+  and DMF often occupy the top rank, even for highly unpolar compounds.
+- Very similar solvents are hard to differentiate (e.g. 2-propanol vs. 1-propanol vs. 1-butanol)
+- Salts / charged groups are heavily underrepresented in the training data, and typically very large
+  errors are observed here.[^A]
+- Only works well for drug-like compounds.
+Have a look at the underlying datasets to see on what chemical space these models are trained on:
+Open Notebook Science Solublity Challenge[^1] 
+and *Towards the Prediction of Drug Solubility in Binary Solvent Mixtures at Various Temperatures Using Machine Learning*
+by Bao et al.[^2]
+
+In case any other limitations/bugs are found, please file an issue in the github repository here:
+https://github.com/Bayer-Group/solvmate/issues
+or contact us by email otherwise (see publications for contact information). 
+
+[^1]: https://figshare.com/articles/dataset/Open_Notebook_Science_Challenge_Solubility_Dataset/1514952?file=2217769
+[^2]: https://www.researchsquare.com/article/rs-4170106/v1
+[^A]: This is really mostly a limitation coming from the limited available data. We would be very happy to hear from (publically available) organic solubility datasets with charged solutes, and
+would readily integrate them into training of the models.
+
 
