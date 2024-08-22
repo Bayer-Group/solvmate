@@ -1,30 +1,49 @@
-<img src="/logo.png" width="200">
+<!--<img src="/logo.png" width="200">-->
+<img src="https://github.com/Bayer-Group/solvmate/blob/main/sm2/js/hydro_banner.svg" alt="Solvmate 2.0 Logo" width="300"/>
 
 # Solvmate 
 
 A practical web application for the recommendation of organic solvents
-based on the paper
-*Solvmate - A hybrid physical/ML approach to solvent recommendation leveraging a rank-based problem framework* (https://chemrxiv.org/engage/chemrxiv/article-details/662f451f418a5379b0012795).
+based on the paper 
+*Solvmate - A hybrid physical/ML approach to solvent recommendation leveraging a rank-based problem framework* 
+(Digital Discovery **2024**, https://doi.org/10.1039/D4DD00138A)
+(preprint: https://chemrxiv.org/engage/chemrxiv/article-details/662f451f418a5379b0012795).
 
 <img src="/figures/figure_webapp_2.svg" width="300" height="300">
 
 Given a compound as SMILES, and set of solvents as IUPAC names,
 the solvents are recommended in increasing solubility.
 
+# Getting Started
+## Installation
+After cloning the repository,
+```
+git clone https://github.com/Bayer-Group/solvmate.git
+```
+change into the main repository where there is a Makefile containing a listing
+of all commonly used operations.
 
+### Running with docker
+We recommend building a docker container by issuing
+```
+make docker_build
+```
+from the main repository directory.
 
-## Usage example:
-The following animation shows a simple step-by-step guide (**domain not active (yet)**):
+The server can then be run with
+```
+make docker_run
+```
+which will start a server at the port 8890.
+In case another port is desired, adjust the docker command, e.g.
+```
+docker run --name solvmate-server -p 80:8890 solvmate:latest
+```
+would run the server on port 80, instead.
 
-<img src="/figures/usage_animation.gif" width="300">
+### Accessing the web app
+Visit the web app at
+```
+http://127.0.0.1:8890/main
+```
 
-## Default credentials
-The default credentials are user: "user", password: "solvmate"
-
-Have a look in the auth.py module how additional users can be configured.
-
-
-# References
-We thank F. Broda from Leibniz-Institut f. Pflanzenbiochemie for the
-development of MolPaintJS, a FOSS molecule editor that we use
-for the convenient input of molecules.
