@@ -52,7 +52,13 @@ http://127.0.0.1:8890/main
 ```
 
 ### Limitations
-Only works well for drug-like compounds.
+Limitations that are currently known:
+- Both v1.0 and v2.0 models tend to be biased towards the usually good solvents, e.g. DMSO and
+  and DMF often occupy the top rank, even for highly unpolar compounds.
+- Very similar solvents are hard to differentiate (e.g. 2-propanol vs. 1-propanol vs. 1-butanol)
+- Salts / charged groups are heavily underrepresented in the training data, and typically very large
+  errors are observed here.[^A]
+- Only works well for drug-like compounds.
 Have a look at the underlying datasets to see on what chemical space these models are trained on:
 Open Notebook Science Solublity Challenge[^1] 
 and *Towards the Prediction of Drug Solubility in Binary Solvent Mixtures at Various Temperatures Using Machine Learning*
@@ -60,6 +66,8 @@ by Bao et al.[^2]
 
 [^1]: https://figshare.com/articles/dataset/Open_Notebook_Science_Challenge_Solubility_Dataset/1514952?file=2217769
 [^2]: https://www.researchsquare.com/article/rs-4170106/v1
+[^A]: This is really mostly a limitation coming from the limited available data. We would be very happy to hear from (publically available) organic solubility datasets with charged solutes, and
+would readily integrate them into training of the models.
 
 ### Usage
 After visiting the main url, we are presented with the frontend:
