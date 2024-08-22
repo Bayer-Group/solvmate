@@ -37,7 +37,7 @@ methyl t-butylether
 nitromethane
 diethyl ether
 decanol
-methyl isobutyl ketone
+methylisobutylketone
 water : Nonaethyleneglycol 1 : 1
 Nonaethylene glycol
 1-heptanol
