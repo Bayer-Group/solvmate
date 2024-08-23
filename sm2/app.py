@@ -142,11 +142,11 @@ async def plot_rank_by_solubility(data:dict):
     df_t_ext = _extend_dataframe_with_temp_range(pd.DataFrame({"solvent_smis": solvent_smis, "solvent_amounts": solvent_amounts,}),temp_start,temp_end,temp_step,)
     solvent_smis = df_t_ext["solvent_smis"].tolist()
     solvent_amounts = df_t_ext["solvent_amounts"].tolist()
-    df_t_ext["temp"] = df_t_ext["temp"].apply(float) + 25
     temps = df_t_ext["temp"].tolist()
 
     dfo = run_predictions_for_solvents(solute_smiles=solute_smiles,solvents=solvent_smis,temps=temps,facs=solvent_amounts,)
     dfo["solvents"] = dfo["solvent SMILES"].map(solvent_smi_to_name)
+    dfo["temp"] = dfo["temp"].apply(float) + 25
     # dfo["solvents_T"] = dfo["solvents"] + "__" + dfo["temp"]
     
     plt.clf()
