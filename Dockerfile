@@ -35,8 +35,7 @@ RUN conda create -n myenv -c conda-forge dgl --yes && \
 # Activate the environment and install the required packages
 # conda install -y -c dglteam/label/th21_cpu dgl && \
 RUN /bin/bash -c "source activate myenv && \
-    pip install torch==2.2.0 && \
-    pip install dgl==2.1.0 && \
+    conda install -c dglteam/label/th21_cpu dgl && \
     pip install torchdata && \
     pip install dgllife==0.3.2 && \
     pip install fastapi[standard] && \
